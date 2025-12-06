@@ -11,21 +11,22 @@ const attemptEl = document.getElementById('attempt');
 
 let attempt = 1;
 let paused = false;
+let gameStarted = false;
+let gameLoopId;
 
 // Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
-let gameStarted = false;
-let cameraX = 0;
 const mapSpeedMax = 6;
+let cameraX = 0;
 
-// Spike tam giác
+// Obstacles
 let obstacles = [];
 const spikeCount = 120;
 function generateSpikes(){
     obstacles = [];
-    let lastX = 500;
+    let lastX = 500; // bắt đầu từ ngoài màn hình
     for(let i=0;i<spikeCount;i++){
-        let gap = 180 + Math.random()*120; // khoảng cách hợp lý
+        let gap = 150 + Math.random()*60; // khoảng cách ngẫu nhiên từ 150-210 px
         lastX += gap;
         obstacles.push({x:lastX, type:'spike'});
     }
@@ -39,7 +40,43 @@ const bgLayers = [
     {color:'#333',x:0,speed:1}
 ];
 
-// Draw background
+// Controls
+let holding=false;
+canvas.addEventListener('touchstart',()=>{holding=true;jump();});
+canvas.addEventListener('touchend',()=>{holding=false;});
+canvas.addEventListener('mousedown',()=>{holding=true;jump();});
+canvas.addEventListener('mouseup',()=>{holding=false;});
+window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
+
+// Jump logic
+function jump(){
+    if(player.onGround){
+        player.vy = player.jump;
+        player.onGround=false;
+    }
+}
+
+// Player update
+function updatePlayer(){
+    player.vy += player.gravity;
+    player.y += player.vy;
+    player.angle += player.vy<0 ? 10 : -5;
+    if(player.angle>90) player.angle=90;
+    if(player.angle<-90) player.angle=-90;
+
+    const groundY = H-50-player.size;
+    if(player.y>=groundY){
+        player.y = groundY;
+        player.vy=0;
+        player.onGround=true;
+        player.angle=0;
+        if(holding) jump(); // nhảy liên tục khi chạm đất
+    } else {
+        player.onGround=false;
+    }
+}
+
+// Draw functions
 function drawBackground(){
     bgLayers.forEach(layer=>{
         layer.x -= layer.speed;
@@ -53,7 +90,6 @@ function drawBackground(){
     });
 }
 
-// Draw player
 function drawPlayer(){
     ctx.save();
     ctx.translate(player.x+player.size/2, player.y+player.size/2);
@@ -63,13 +99,11 @@ function drawPlayer(){
     ctx.restore();
 }
 
-// Ground
 function drawGround(){
     ctx.fillStyle="#555";
     ctx.fillRect(0,H-50,W,50);
 }
 
-// Draw spike
 function drawObstacles(){
     obstacles.forEach(obs=>{
         let screenX = obs.x - cameraX;
@@ -84,39 +118,12 @@ function drawObstacles(){
     });
 }
 
-// Update player
-function updatePlayer(){
-    player.vy += player.gravity;
-    player.y += player.vy;
-    player.angle += player.vy<0 ? 10 : -5;
-    if(player.angle>90) player.angle=90;
-    if(player.angle<-90) player.angle=-90;
-    const groundY = H-50-player.size;
-    if(player.y>=groundY){
-        player.y = groundY;
-        player.vy=0;
-        player.onGround=true;
-        player.angle=0;
-        if(holding) jump();
-    } else {
-        player.onGround=false;
-    }
-}
-
-// Jump logic
-function jump(){
-    if(player.onGround){
-        player.vy = player.jump;
-        player.onGround=false;
-    }
-}
-
-// Update camera
+// Camera update
 function updateCamera(){
     cameraX += mapSpeedMax;
 }
 
-// Update progress bar
+// Progress bar
 function updateProgress(){
     if(!bgMusic.duration) return;
     let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
@@ -124,12 +131,13 @@ function updateProgress(){
     progressEl.textContent = Math.floor(percent)+"%";
 }
 
-// Collision detection
+// Collision
 function checkCollisionSpike(spike){
     let px=player.x, py=player.y, ps=player.size;
     let sx=spike.x-cameraX, sy=H-50-50, ss=50;
     return px<sx+ss && px+ps>sx && py<sy+ss && py+ps>sy;
 }
+
 function checkCollision(){
     for(let obs of obstacles){
         if(checkCollisionSpike(obs)) return true;
@@ -149,7 +157,7 @@ function showAttempt(){
     },30);
 }
 
-// Reset game
+// Reset game after fail
 function resetGame(){
     player.y = H-100;
     player.vy=0;
@@ -157,7 +165,10 @@ function resetGame(){
     player.angle=0;
     cameraX=0;
     generateSpikes();
+    bgMusic.currentTime = 0;
+    bgMusic.play();
     gameStarted=true;
+    gameLoop();
 }
 
 // Game loop
@@ -175,25 +186,15 @@ function gameLoop(){
         gameStarted=false;
         attempt++;
         showAttempt();
-        setTimeout(()=>{
-            resetGame(); // tự động chơi lại khi thua
-        },1000);
+        setTimeout(resetGame,1000); // tự động chơi lại
         return;
     }
-    requestAnimationFrame(gameLoop);
+    gameLoopId = requestAnimationFrame(gameLoop);
 }
-
-// Controls
-let holding=false;
-canvas.addEventListener('touchstart',()=>{holding=true;jump();});
-canvas.addEventListener('touchend',()=>{holding=false;});
-canvas.addEventListener('mousedown',()=>{holding=true;jump();});
-canvas.addEventListener('mouseup',()=>{holding=false;});
-window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
 
 // Keep jump while holding
 function holdJump(){
-    if(holding) jump();
+    if(!paused) if(holding) jump();
     requestAnimationFrame(holdJump);
 }
 
