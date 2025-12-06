@@ -4,8 +4,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const scoreDiv = document.getElementById('score');
-let score = 0;
+const progressBar = document.getElementById('progressBar');
 
 // Player
 const player = {
@@ -22,9 +21,9 @@ const player = {
 
 // Obstacles
 let obstacles = [];
-let obstacleSpeed = 10;
+let obstacleSpeed = 10; // px/frame, sẽ tính dựa vào nhạc
 
-// Background stars (hiệu ứng)
+// Background stars
 let stars = [];
 for (let i = 0; i < 100; i++) {
   stars.push({
@@ -35,23 +34,35 @@ for (let i = 0; i < 100; i++) {
   });
 }
 
-// Music
+// Music & map
 const bgMusic = document.getElementById('bgMusic');
 let musicStarted = false;
+let mapLength = 5000;  // px
+let distanceTravelled = 0;
 
-// Controls
+// Bắt đầu nhạc khi click hoặc nhấn Space
+function startMusic() {
+  if (!musicStarted) {
+    bgMusic.play().catch(() => console.log('Nhạc chưa phát, thử nhấn lại'));
+    musicStarted = true;
+
+    bgMusic.addEventListener('loadedmetadata', () => {
+      const musicDuration = bgMusic.duration;
+      obstacleSpeed = mapLength / (musicDuration * 60); // px/frame ~ 60FPS
+    });
+  }
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
-    if (!musicStarted) {
-      bgMusic.play();
-      musicStarted = true;
-    }
+    startMusic();
     if (player.onGround) {
       player.dy = player.jumpForce;
       player.onGround = false;
     }
   }
 });
+window.addEventListener('click', startMusic);
 
 // Spawn obstacles
 function spawnObstacle() {
@@ -66,11 +77,17 @@ function spawnObstacle() {
   });
 }
 
+// Kết thúc game khi nhạc hết
+bgMusic.addEventListener('ended', () => {
+  alert(`Map kết thúc! Bạn đã đi được 100%`);
+  document.location.reload();
+});
+
 // Update game
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw moving background stars
+  // Background stars
   ctx.fillStyle = '#fff';
   stars.forEach(s => {
     s.x -= s.speed;
@@ -90,7 +107,7 @@ function update() {
     player.onGround = true;
   }
 
-  // Draw player with glow
+  // Player glow
   ctx.fillStyle = player.color;
   ctx.shadowColor = player.color;
   ctx.shadowBlur = 15;
@@ -102,7 +119,6 @@ function update() {
     const obs = obstacles[i];
     obs.x -= obstacleSpeed;
 
-    // Draw obstacle with shadow
     ctx.fillStyle = obs.color;
     ctx.shadowColor = obs.color;
     ctx.shadowBlur = 10;
@@ -115,22 +131,24 @@ function update() {
         player.y < obs.y + obs.height &&
         player.y + player.height > obs.y) {
       bgMusic.pause();
-      alert('Game Over! Score: ' + score);
+      alert('Game Over! Map dừng lại.');
       document.location.reload();
     }
 
-    // Remove off-screen
     if (obs.x + obs.width < 0) {
       obstacles.splice(i, 1);
-      score++;
-      scoreDiv.innerText = 'Score: ' + score;
     }
   }
+
+  // Update progress
+  distanceTravelled += obstacleSpeed;
+  const progressPercent = Math.min((distanceTravelled / mapLength) * 100, 100);
+  progressBar.style.width = progressPercent + '%';
 
   requestAnimationFrame(update);
 }
 
-// Spawn obstacles every 1.5s
+// Spawn obstacles mỗi 1.5s
 setInterval(spawnObstacle, 1500);
 
 update();
