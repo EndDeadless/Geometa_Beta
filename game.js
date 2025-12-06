@@ -8,7 +8,7 @@ const progressBar = document.getElementById('progressBar');
 const bgMusic = document.getElementById('bgMusic');
 
 let obstacles = [];
-let mapLength = 5000; // tổng chiều dài map
+let mapLength = 5000;
 
 // Player
 const player = {
@@ -23,7 +23,7 @@ const player = {
   onGround: false
 };
 
-// Particles và stars background
+// Particles và stars
 let particles = [];
 for(let i=0;i<150;i++){
   particles.push({
@@ -35,7 +35,7 @@ for(let i=0;i<150;i++){
   });
 }
 
-// Hàm nhảy
+// Jump function
 function jump() {
   if(player.onGround){
     player.dy = player.jumpForce;
@@ -48,27 +48,35 @@ window.addEventListener('keydown', e => { if(e.code==='Space') jump(); });
 window.addEventListener('touchstart', jump);
 window.addEventListener('mousedown', jump);
 
-// Spawn obstacles kiểu "cây gai" tam giác
+// Spawn obstacles kiểu cây gai với **khoảng cách ngẫu nhiên**
+let lastObstacleX = 0;
 function spawnObstacle() {
+  const minGap = 200; // khoảng cách tối thiểu
+  const maxGap = 500; // khoảng cách tối đa
+  const gap = minGap + Math.random()*(maxGap-minGap);
+
   const size = 50 + Math.random() * 80;
+
+  const x = lastObstacleX + gap;
   obstacles.push({
-    x: canvas.width + 50,
+    x: canvas.width + x,
     y: canvas.height - 100,
     size: size,
     color: '#FFD700',
-    startX: canvas.width + 50,
+    startX: canvas.width + x,
     glowPhase: Math.random() * Math.PI * 2
   });
+
+  lastObstacleX += gap;
 }
 
-// Vẽ cây gai tam giác
+// Vẽ cây gai
 function drawSpike(obs){
   const glow = 10 + 10 * Math.sin(Date.now()*0.005 + obs.glowPhase);
   ctx.fillStyle = obs.color;
   ctx.shadowColor = obs.color;
   ctx.shadowBlur = glow;
   ctx.beginPath();
-  // Vẽ 3 tam giác nhỏ tạo thành cây gai
   for(let i=0;i<3;i++){
     const yOffset = i*obs.size*0.3;
     const sizeOffset = obs.size - i*obs.size*0.3;
@@ -83,11 +91,14 @@ function drawSpike(obs){
 
 // Game loop
 function update(){
-  // Gradient background động
-  const gradient = ctx.createLinearGradient(0,0,0,canvas.height);
+  // Gradient background động + chuyển cảnh theo progress
+  const progressPercent = (bgMusic.duration>0)? Math.min(bgMusic.currentTime/bgMusic.duration,1):0;
   const t = Date.now()*0.002;
-  gradient.addColorStop(0, `hsl(${Math.sin(t)*50+210},60%,40%)`);
-  gradient.addColorStop(1, `hsl(${Math.cos(t)*50+180},70%,30%)`);
+  const startHue = 200 + progressPercent*100;
+  const endHue = 150 + progressPercent*80;
+  const gradient = ctx.createLinearGradient(0,0,0,canvas.height);
+  gradient.addColorStop(0, `hsl(${startHue},60%,40%)`);
+  gradient.addColorStop(1, `hsl(${endHue},70%,30%)`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -117,24 +128,20 @@ function update(){
   ctx.fillRect(player.x, player.y, player.width, player.height);
   ctx.shadowBlur = 0;
 
-  // Progress theo nhạc (chuẩn khớp nhạc)
-  let progressPercent = 0;
-  if(bgMusic.duration>0){
-    progressPercent = Math.min((bgMusic.currentTime / bgMusic.duration)*100,100);
-  }
-  progressBar.style.width = progressPercent + '%';
-  progressBar.innerText = `${Math.floor(progressPercent)}%`;
+  // Update progress bar
+  progressBar.style.width = (progressPercent*100)+'%';
+  progressBar.innerText = `${Math.floor(progressPercent*100)}%`;
 
   // Obstacles
   obstacles.forEach(obs=>{
-    obs.x = obs.startX - (progressPercent/100)*mapLength;
+    obs.x = obs.startX - progressPercent*mapLength;
     drawSpike(obs);
 
-    // Collision bounding box
-    if(player.x<obs.x + obs.size &&
-       player.x + player.width>obs.x &&
+    // Collision
+    if(player.x<obs.x+obs.size &&
+       player.x+player.width>obs.x &&
        player.y<obs.y &&
-       player.y + player.height>obs.y - obs.size){
+       player.y+player.height>obs.y-obs.size){
          bgMusic.pause();
          alert('Game Over! Map dừng lại.');
          document.location.reload();
@@ -151,6 +158,7 @@ let obstacleInterval;
 function startGame(){
   startBtn.style.display='none';
   obstacles=[];
+  lastObstacleX = 0;
   bgMusic.play();
 
   obstacleInterval = setInterval(spawnObstacle,1500);
