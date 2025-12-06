@@ -10,14 +10,16 @@ const progressEl = document.getElementById('progress');
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true};
 let gameStarted = false;
 let cameraX = 0;
+const mapSpeed = 5; // tốc độ “di chuyển” map
 
-// obstacles mẫu
+// obstacles
 let obstacles = [
     {x:500,type:'spike'},{x:900,type:'block'},{x:1300,type:'spike'},
-    {x:1800,type:'block'},{x:2300,type:'spike'},{x:2800,type:'block'}
+    {x:1800,type:'block'},{x:2300,type:'spike'},{x:2800,type:'block'},
+    {x:3300,type:'block'},{x:3800,type:'spike'},{x:4300,type:'block'}
 ];
 
-// parallax layer giả lập
+// parallax backgrounds
 const bgLayers = [
     {color:'#111',x:0,speed:0.2},
     {color:'#222',x:0,speed:0.5},
@@ -27,15 +29,23 @@ const bgLayers = [
 function drawBackground(){
     bgLayers.forEach(layer=>{
         layer.x -= layer.speed;
-        if(layer.x <= -W) layer.x=0;
+        if(layer.x <= -W) layer.x = 0;
         ctx.fillStyle = layer.color;
         ctx.fillRect(layer.x,0,W,H);
         ctx.fillRect(layer.x+W,0,W,H);
     });
 }
 
-function drawPlayer(){ctx.fillStyle="#0f0";ctx.fillRect(player.x,player.y,player.size,player.size);}
-function drawGround(){ctx.fillStyle="#555";ctx.fillRect(0,H-50,W,50);}
+function drawPlayer(){
+    ctx.fillStyle="#0f0";
+    ctx.fillRect(player.x,player.y,player.size,player.size);
+}
+
+function drawGround(){
+    ctx.fillStyle="#555";
+    ctx.fillRect(0,H-50,W,50);
+}
+
 function drawObstacles(){
     obstacles.forEach(obs=>{
         let screenX = obs.x - cameraX;
@@ -55,13 +65,16 @@ function drawObstacles(){
 }
 
 function updatePlayer(){
-    player.vy+=player.gravity;
-    player.y+=player.vy;
+    player.vy += player.gravity;
+    player.y += player.vy;
     const groundY = H-50-player.size;
     if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true;}
 }
 
-function updateCamera(){cameraX = Math.max(player.x-100,0);}
+function updateCamera(){
+    cameraX += mapSpeed; // map tự chạy
+}
+
 function updateProgress(){
     if(!bgMusic.duration) return;
     let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
@@ -82,20 +95,31 @@ function gameLoop(){
     requestAnimationFrame(gameLoop);
 }
 
-function jump(){if(player.onGround){player.vy=player.jump;player.onGround=false;}}
+function jump(){
+    if(player.onGround){
+        player.vy = player.jump;
+        player.onGround=false;
+    }
+}
 
-startBtn.addEventListener('click',()=>{
+startBtn.addEventListener('click', ()=>{
     bgMusic.play().then(()=>{
         gameStarted=true;
         startBtn.style.display="none";
         gameLoop();
-    }).catch(e=>{console.log("Music play error:", e); gameStarted=true; startBtn.style.display="none"; gameLoop();});
+    }).catch(e=>{
+        console.log("Music blocked:", e);
+        gameStarted=true;
+        startBtn.style.display="none";
+        gameLoop();
+    });
 });
 
-canvas.addEventListener('touchstart',jump);
-canvas.addEventListener('mousedown',jump);
+// touch/click nhảy
+canvas.addEventListener('touchstart', jump);
+canvas.addEventListener('mousedown', jump);
 
-window.addEventListener('resize',()=>{
-    W=canvas.width=window.innerWidth;
-    H=canvas.height=window.innerHeight;
+window.addEventListener('resize', ()=>{
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
 });
