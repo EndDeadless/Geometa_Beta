@@ -14,13 +14,13 @@ let attempt = 1;
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 let gameStarted = false;
 let cameraX = 0;
-const mapSpeedMax = 6; // max speed camera/map
+const mapSpeedMax = 6; // tốc độ map, tách hoàn toàn với thanh tiến trình
 
-// Spike obstacles
+// Spike tam giác
 let obstacles = [];
 let spikeCount = 120;
 for(let i=0;i<spikeCount;i++){
-    let x = 500 + i*180 + Math.random()*80; // khoảng cách spike hợp lý
+    let x = 500 + i*180 + Math.random()*80; // phân bổ hợp lý
     obstacles.push({x, type:'spike'});
 }
 
@@ -90,23 +90,25 @@ function updatePlayer(){
         player.onGround=true;
         player.angle=0;
         if(holding) jump(); // giữ nhảy liên tục khi chạm đất
+    } else {
+        player.onGround=false; // đang trên không
     }
 }
 
-// Jump logic
+// Jump logic chuẩn Geometry Dash
 function jump(){
-    if(player.onGround){
+    if(player.onGround){ // CHỈ NHẢY KHI CHẠM ĐẤT
         player.vy = player.jump;
         player.onGround=false;
     }
 }
 
-// Update camera speed
+// Update camera (tách rời với tiến trình nhạc)
 function updateCamera(){
-    cameraX += mapSpeedMax; // tốc độ map cố định max 6
+    cameraX += mapSpeedMax; // camera di chuyển tốc độ cố định
 }
 
-// Update progress bar (khớp nhạc)
+// Progress bar theo nhạc
 function updateProgress(){
     if(!bgMusic.duration) return;
     let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
@@ -170,7 +172,7 @@ function gameLoop(){
     requestAnimationFrame(gameLoop);
 }
 
-// Handle hold jump
+// Controls
 let holding=false;
 canvas.addEventListener('touchstart',()=>{holding=true;jump();});
 canvas.addEventListener('touchend',()=>{holding=false;});
@@ -178,7 +180,7 @@ canvas.addEventListener('mousedown',()=>{holding=true;jump();});
 canvas.addEventListener('mouseup',()=>{holding=false;});
 window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
 
-// Keep jump when holding
+// Keep jump while holding (only when chạm đất)
 function holdJump(){
     if(holding) jump();
     requestAnimationFrame(holdJump);
