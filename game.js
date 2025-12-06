@@ -10,19 +10,22 @@ const attemptEl = document.getElementById('attempt');
 
 let attempt = 1;
 
+// Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 let gameStarted = false;
 let cameraX = 0;
-const mapSpeed = 6;
+let mapWidth = 3000; // sẽ tính theo số lượng spike và khoảng cách
+let mapSpeed = 5; // max speed 6
 
-// Spike obstacles
+// Spike obstacles (tam giác)
 let obstacles = [];
-let spikeCount = 25;
+let spikeCount = 120;
 for(let i=0;i<spikeCount;i++){
-    obstacles.push({x:600 + i*300,type:'spike'});
+    let x = 500 + i*150 + Math.random()*50; // phân bổ đều + random offset
+    obstacles.push({x, type:'spike'});
 }
 
-// Parallax background
+// Background parallax
 const bgLayers = [
     {color:'#111',x:0,speed:0.2},
     {color:'#222',x:0,speed:0.5},
@@ -43,7 +46,7 @@ function drawBackground(){
     });
 }
 
-// Draw player with rotation
+// Draw player
 function drawPlayer(){
     ctx.save();
     ctx.translate(player.x+player.size/2, player.y+player.size/2);
@@ -82,21 +85,40 @@ function updatePlayer(){
     if(player.angle>90) player.angle=90;
     if(player.angle<-90) player.angle=-90;
     const groundY = H-50-player.size;
-    if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true;player.angle=0;}
+    if(player.y>groundY){
+        player.y=groundY;
+        player.vy=0;
+        player.onGround=true;
+        player.angle=0;
+        if(holding) jump(); // giữ nhảy liên tục khi chạm đất
+    }
 }
 
-// Update camera
-function updateCamera(){cameraX += mapSpeed;}
+// Jump
+function jump(){
+    player.vy=player.jump;
+    player.onGround=false;
+}
 
-// Progress
+// Update camera dựa vào nhạc
+function updateCamera(){
+    if(bgMusic.duration){
+        mapSpeed = Math.min(mapWidth / bgMusic.duration / 60,6); // scale speed max 6
+        cameraX += mapSpeed;
+    } else {
+        cameraX += 5;
+    }
+}
+
+// Progress bar khớp nhạc
 function updateProgress(){
     if(!bgMusic.duration) return;
-    let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
+    let percent = Math.min((cameraX/mapWidth)*100,100);
     progressEl.style.width = percent+"%";
     progressEl.textContent = Math.floor(percent)+"%";
 }
 
-// Collision detection spike
+// Collision
 function checkCollisionSpike(spike){
     let px=player.x, py=player.y, ps=player.size;
     let sx=spike.x-cameraX, sy=H-50-50, ss=50;
@@ -109,7 +131,7 @@ function checkCollision(){
     return false;
 }
 
-// Attempt display animation
+// Attempt display
 function showAttempt(){
     attemptEl.textContent = `Attempt ${attempt}`;
     attemptEl.style.opacity = 1;
@@ -119,6 +141,16 @@ function showAttempt(){
         attemptEl.style.opacity = alpha;
         if(alpha<=0){clearInterval(interval);}
     },30);
+}
+
+// Reset game nội bộ
+function resetGame(){
+    player.y = H-100;
+    player.vy=0;
+    player.onGround=true;
+    player.angle=0;
+    cameraX=0;
+    gameStarted=true;
 }
 
 // Game loop
@@ -142,21 +174,8 @@ function gameLoop(){
     requestAnimationFrame(gameLoop);
 }
 
-// Reset game without reload
-function resetGame(){
-    player.y = H-100;
-    player.vy=0;
-    player.onGround=true;
-    player.angle=0;
-    cameraX=0;
-    bgMusic.currentTime=0;
-    gameStarted=true;
-    gameLoop();
-}
-
-// Jump / hold to jump
+// Handle hold jump
 let holding=false;
-function jump(){player.vy=player.jump;player.onGround=false;}
 canvas.addEventListener('touchstart',()=>{holding=true;jump();});
 canvas.addEventListener('touchend',()=>{holding=false;});
 canvas.addEventListener('mousedown',()=>{holding=true;jump();});
@@ -168,7 +187,7 @@ function holdJump(){
     requestAnimationFrame(holdJump);
 }
 
-// Start button
+// Start game
 startBtn.addEventListener('click',()=>{
     bgMusic.play().then(()=>{
         gameStarted=true;
