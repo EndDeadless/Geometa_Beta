@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mini Geometry Dash Pro</title>
+<title>Mini Geometry Dash Attempt</title>
 <style>
 html,body{margin:0;padding:0;overflow:hidden;background:#111;font-family:sans-serif;}
 canvas{display:block;}
@@ -18,12 +18,17 @@ canvas{display:block;}
     width:0;height:100%;background:#fff;text-align:center;color:#000;
     line-height:25px;font-weight:bold;
 }
+#attempt{
+    position:absolute;top:50px;left:50%;transform:translateX(-50%);
+    color:#fff;font-size:28px;font-weight:bold;opacity:1;
+}
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
 <button id="startBtn">Start Game</button>
 <div id="progressBar"><div id="progress">0%</div></div>
+<div id="attempt">Attempt 1</div>
 
 <!-- Nhạc sample -->
 <audio id="bgMusic" src="Di sản của những người đã ngã xuống - đệm.mp3" preload="auto"></audio>
