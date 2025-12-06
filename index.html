@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Geometry Dash Pro</title>
+  <title>Mini Geometry Dash - Progress Only</title>
   <style>
     body {
       margin: 0;
@@ -15,21 +15,29 @@
       display: block;
       background: linear-gradient(to bottom, #1e3c72, #2a5298);
     }
-    #score {
+    #progressContainer {
       position: absolute;
       top: 20px;
       left: 20px;
-      font-size: 28px;
-      color: #fff;
-      font-weight: bold;
-      text-shadow: 2px 2px 5px #000;
+      width: 300px;
+      height: 20px;
+      background: #555;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background: #FFD700;
     }
   </style>
 </head>
 <body>
-  <div id="score">Score: 0</div>
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
   <canvas id="gameCanvas"></canvas>
-  <audio id="bgMusic" src="Giấc mơ ngân hà 2-đệm.mp3" loop></audio>
+  <audio id="bgMusic" src="Giấc mơ ngân hà 2-đệm.mp33"></audio>
   <script src="game.js"></script>
 </body>
 </html>
