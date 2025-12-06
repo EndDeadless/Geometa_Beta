@@ -13,6 +13,7 @@ let attempt = 1;
 let paused = false;
 let gameStarted = false;
 let gameLoopId;
+let practiceMode = false;
 
 // Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
@@ -26,7 +27,7 @@ function generateSpikes(){
     obstacles = [];
     let lastX = 500;
     for(let i=0;i<spikeCount;i++){
-        let gap = 200 + Math.random()*100; // 200-300px
+        let gap = 250 + Math.random()*150; // 250-400px khoảng cách xa hơn
         lastX += gap;
         obstacles.push({x:lastX, type:'spike'});
     }
@@ -101,7 +102,7 @@ function drawObstacles(){
 // Camera
 function updateCamera(){cameraX+=mapSpeedMax;}
 
-// Progress
+// Progress bar top
 function updateProgress(){
     if(!bgMusic.duration) return;
     let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
@@ -178,8 +179,21 @@ startBtn.addEventListener('click',()=>{
     });
 });
 
-// Pause menu animation + icons
+// Pause menu with hover + scale
 let pauseMenuVisible=false;
+let mouseX=0, mouseY=0;
+let hoverIndex=-1; // 0:resume, 1:restart, 2:practice
+canvas.addEventListener('mousemove',e=>{
+    mouseX=e.clientX; mouseY=e.clientY;
+    if(pauseMenuVisible){
+        hoverIndex=-1;
+        const btns = [{x:W/2-100,y:H/2},{x:W/2,y:H/2},{x:W/2+100,y:H/2}];
+        btns.forEach((b,i)=>{
+            if(Math.hypot(mouseX-b.x,mouseY-b.y)<40) hoverIndex=i;
+        });
+    }
+});
+
 function showPauseMenu(){
     pauseMenuVisible=true;
     paused=true;
@@ -192,39 +206,51 @@ function hidePauseMenu(){
     bgMusic.play();
     gameLoop();
 }
+
 pauseBtn.addEventListener('click',()=>{if(pauseMenuVisible) hidePauseMenu(); else showPauseMenu();});
 
 function drawPauseMenu(){
     ctx.fillStyle='rgba(0,0,0,0.7)';
     ctx.fillRect(0,0,W,H);
-    // Resume
-    drawCircleIcon(W/2-100,H/2,40,'#fff','triangle','#000');
-    // Restart
-    drawCircleIcon(W/2,H/2,40,'#fff','arrow','#000');
-    // Practice
-    drawCircleIcon(W/2+100,H/2,40,'#fff','rhombus','#0f0');
+    const btns = [
+        {x:W/2-100,y:H/2,type:'triangle',color:'#000'},
+        {x:W/2,y:H/2,type:'arrow',color:'#000'},
+        {x:W/2+100,y:H/2,type:'rhombus',color:'#0f0'}
+    ];
+    btns.forEach((b,i)=>{
+        let scale = hoverIndex===i?1.2:1;
+        drawCircleIcon(b.x,b.y,40*scale,'#fff',b.type,b.color);
+    });
 }
+
 function drawCircleIcon(x,y,r,bgColor,type,iconColor){
-    ctx.fillStyle=bgColor; ctx.beginPath();
-    ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.fillStyle=bgColor; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
     ctx.fillStyle=iconColor; ctx.beginPath();
     if(type==='triangle'){
-        ctx.moveTo(x-r/2,y-r/2); ctx.lineTo(x-r/2,y+r/2); ctx.lineTo(x+r/2,y); ctx.closePath();
+        ctx.moveTo(-r/2,-r/2); ctx.lineTo(-r/2,r/2); ctx.lineTo(r/2,0); ctx.closePath();
     } else if(type==='arrow'){
-        ctx.arc(x,y,r/2,0,Math.PI*1.5); ctx.moveTo(x+r/2,y); ctx.lineTo(x+r/4,y-r/4); ctx.lineTo(x+r/4,y+r/4); ctx.closePath();
+        ctx.moveTo(-r/2,0); ctx.lineTo(r/2,0); ctx.lineTo(0,-r/2); ctx.closePath();
     } else if(type==='rhombus'){
-        ctx.moveTo(x,y-r/2); ctx.lineTo(x+r/2,y); ctx.lineTo(x,y+r/2); ctx.lineTo(x-r/2,y); ctx.closePath();
+        ctx.moveTo(0,-r/2); ctx.lineTo(r/2,0); ctx.lineTo(0,r/2); ctx.lineTo(-r/2,0); ctx.closePath();
     }
     ctx.fill();
+    ctx.restore();
 }
 
 // Pause Menu click
 canvas.addEventListener('click',function(e){
     if(pauseMenuVisible){
         let mx=e.clientX,my=e.clientY;
-        if(Math.hypot(mx-(W/2-100),my-H/2)<40) hidePauseMenu(); 
-        if(Math.hypot(mx-(W/2),my-H/2)<40){resetGame(); hidePauseMenu();}
-        if(Math.hypot(mx-(W/2+100),my-H/2)<40){practiceMode=!practiceMode; hidePauseMenu();}
+        const btns = [{x:W/2-100,y:H/2},{x:W/2,y:H/2},{x:W/2+100,y:H/2}];
+        btns.forEach((b,i)=>{
+            if(Math.hypot(mx-b.x,my-b.y)<40){
+                if(i===0) hidePauseMenu(); // resume
+                if(i===1){resetGame(); hidePauseMenu();} // restart
+                if(i===2){practiceMode=!practiceMode; hidePauseMenu();} // practice
+            }
+        });
     }
 });
 
