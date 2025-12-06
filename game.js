@@ -10,7 +10,7 @@ const progressEl = document.getElementById('progress');
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true};
 let gameStarted = false;
 let cameraX = 0;
-const mapSpeed = 5; // tốc độ “di chuyển” map
+const mapSpeed = 5; // tốc độ map tự chạy
 
 // obstacles
 let obstacles = [
@@ -19,7 +19,7 @@ let obstacles = [
     {x:3300,type:'block'},{x:3800,type:'spike'},{x:4300,type:'block'}
 ];
 
-// parallax backgrounds
+// parallax backgrounds (tạm màu)
 const bgLayers = [
     {color:'#111',x:0,speed:0.2},
     {color:'#222',x:0,speed:0.5},
@@ -82,6 +82,27 @@ function updateProgress(){
     progressEl.textContent = Math.floor(percent)+"%";
 }
 
+// collision detection
+function checkCollisionRect(rect){
+    let px = player.x, py = player.y, ps = player.size;
+    let rx = rect.x - cameraX, ry = H-50-50, rs = 50;
+    return px < rx+rs && px+ps > rx && py < ry+rs && py+ps > ry;
+}
+
+function checkCollisionSpike(spike){
+    let px = player.x, py = player.y, ps = player.size;
+    let sx = spike.x - cameraX, sy = H-50-50, ss = 50;
+    return px < sx+ss && px+ps > sx && py < sy+ss && py+ps > sy;
+}
+
+function checkCollision(){
+    for(let obs of obstacles){
+        if(obs.type==='block' && checkCollisionRect(obs)) return true;
+        if(obs.type==='spike' && checkCollisionSpike(obs)) return true;
+    }
+    return false;
+}
+
 function gameLoop(){
     if(!gameStarted) return;
     ctx.clearRect(0,0,W,H);
@@ -92,6 +113,12 @@ function gameLoop(){
     updatePlayer();
     updateCamera();
     updateProgress();
+    if(checkCollision()){
+        gameStarted=false;
+        alert("Game Over!");
+        location.reload();
+        return;
+    }
     requestAnimationFrame(gameLoop);
 }
 
@@ -108,13 +135,13 @@ startBtn.addEventListener('click', ()=>{
         startBtn.style.display="none";
         gameLoop();
     }).catch(e=>{
+        console.log("Music blocked:", e);
         gameStarted=true;
         startBtn.style.display="none";
         gameLoop();
     });
 });
 
-// touch/click nhảy
 canvas.addEventListener('touchstart', jump);
 canvas.addEventListener('mousedown', jump);
 
