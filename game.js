@@ -14,14 +14,13 @@ let attempt = 1;
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 let gameStarted = false;
 let cameraX = 0;
-let mapWidth = 3000; // sẽ tính theo số lượng spike và khoảng cách
-let mapSpeed = 5; // max speed 6
+const mapSpeedMax = 6; // max speed camera/map
 
-// Spike obstacles (tam giác)
+// Spike obstacles
 let obstacles = [];
 let spikeCount = 120;
 for(let i=0;i<spikeCount;i++){
-    let x = 500 + i*150 + Math.random()*50; // phân bổ đều + random offset
+    let x = 500 + i*180 + Math.random()*80; // khoảng cách spike hợp lý
     obstacles.push({x, type:'spike'});
 }
 
@@ -62,7 +61,7 @@ function drawGround(){
     ctx.fillRect(0,H-50,W,50);
 }
 
-// Obstacles
+// Draw spike
 function drawObstacles(){
     obstacles.forEach(obs=>{
         let screenX = obs.x - cameraX;
@@ -85,8 +84,8 @@ function updatePlayer(){
     if(player.angle>90) player.angle=90;
     if(player.angle<-90) player.angle=-90;
     const groundY = H-50-player.size;
-    if(player.y>groundY){
-        player.y=groundY;
+    if(player.y>=groundY){
+        player.y = groundY;
         player.vy=0;
         player.onGround=true;
         player.angle=0;
@@ -94,31 +93,28 @@ function updatePlayer(){
     }
 }
 
-// Jump
+// Jump logic
 function jump(){
-    player.vy=player.jump;
-    player.onGround=false;
-}
-
-// Update camera dựa vào nhạc
-function updateCamera(){
-    if(bgMusic.duration){
-        mapSpeed = Math.min(mapWidth / bgMusic.duration / 60,6); // scale speed max 6
-        cameraX += mapSpeed;
-    } else {
-        cameraX += 5;
+    if(player.onGround){
+        player.vy = player.jump;
+        player.onGround=false;
     }
 }
 
-// Progress bar khớp nhạc
+// Update camera speed
+function updateCamera(){
+    cameraX += mapSpeedMax; // tốc độ map cố định max 6
+}
+
+// Update progress bar (khớp nhạc)
 function updateProgress(){
     if(!bgMusic.duration) return;
-    let percent = Math.min((cameraX/mapWidth)*100,100);
+    let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
     progressEl.style.width = percent+"%";
     progressEl.textContent = Math.floor(percent)+"%";
 }
 
-// Collision
+// Collision detection
 function checkCollisionSpike(spike){
     let px=player.x, py=player.y, ps=player.size;
     let sx=spike.x-cameraX, sy=H-50-50, ss=50;
@@ -139,7 +135,7 @@ function showAttempt(){
     let interval = setInterval(()=>{
         alpha -= 0.02;
         attemptEl.style.opacity = alpha;
-        if(alpha<=0){clearInterval(interval);}
+        if(alpha<=0) clearInterval(interval);
     },30);
 }
 
@@ -182,6 +178,7 @@ canvas.addEventListener('mousedown',()=>{holding=true;jump();});
 canvas.addEventListener('mouseup',()=>{holding=false;});
 window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
 
+// Keep jump when holding
 function holdJump(){
     if(holding) jump();
     requestAnimationFrame(holdJump);
