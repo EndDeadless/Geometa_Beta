@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Geometry Dash - Start Game</title>
+  <title>Mini Geometry Dash - Tam giác</title>
   <style>
     body {
       margin: 0;
@@ -14,6 +14,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      position: relative;
     }
     canvas {
       display: block;
@@ -42,6 +43,10 @@
       border-radius: 10px;
       cursor: pointer;
       box-shadow: 2px 2px 10px #000;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
   </style>
 </head>
@@ -51,7 +56,7 @@
     <div id="progressBar"></div>
   </div>
   <canvas id="gameCanvas"></canvas>
-  <audio id="bgMusic" src="Giấc mơ ngân hà 2-đệm.mp3" preload="auto"></audio>
+  <audio id="bgMusic" src="music.mp3" preload="auto"></audio>
   <script src="game.js"></script>
 </body>
 </html>
