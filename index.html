@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mini Geometry Dash</title>
+<title>Mini Geometry Dash Pro</title>
 <style>
-html,body{margin:0;padding:0;overflow:hidden;background:#222;font-family:sans-serif;}
+html,body{margin:0;padding:0;overflow:hidden;background:#111;font-family:sans-serif;}
 canvas{display:block;}
 #startBtn{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    padding:15px 30px;font-size:20px;cursor:pointer;z-index:10;
+    padding:15px 30px;font-size:22px;cursor:pointer;z-index:10;border:none;border-radius:10px;background:#0af;color:#fff;
 }
 #progressBar{
-    position:absolute;top:10px;left:50%;transform:translateX(-50%);
-    width:80%;height:20px;background:#888;border-radius:10px;overflow:hidden;z-index:10;
+    position:absolute;top:15px;left:50%;transform:translateX(-50%);
+    width:80%;height:25px;background:#555;border-radius:12px;overflow:hidden;z-index:10;
 }
 #progress{
     width:0;height:100%;background:#fff;text-align:center;color:#000;
-    line-height:20px;font-weight:bold;
+    line-height:25px;font-weight:bold;
 }
 </style>
 </head>
@@ -25,7 +25,7 @@ canvas{display:block;}
 <button id="startBtn">Start Game</button>
 <div id="progressBar"><div id="progress">0%</div></div>
 
-<!-- Nhạc sample hợp lệ CORS -->
+<!-- Nhạc sample -->
 <audio id="bgMusic" src="Di sản của những người đã ngã xuống - đệm.mp3" preload="auto"></audio>
 
 <script src="game.js"></script>
