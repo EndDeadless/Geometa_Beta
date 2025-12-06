@@ -22,7 +22,7 @@ let cameraX = 0;
 
 // Obstacles
 let obstacles = [];
-const spikeCount = 120;
+const spikeCount = 80;
 function generateSpikes(){
     obstacles = [];
     let lastX = 500;
@@ -68,10 +68,7 @@ function drawBackground(){
     bgLayers.forEach(layer=>{
         layer.x -= layer.speed;
         if(layer.x <= -W) layer.x =0;
-        let grd = ctx.createLinearGradient(0,0,W,H);
-        grd.addColorStop(0, layer.color);
-        grd.addColorStop(1, '#000');
-        ctx.fillStyle = grd;
+        ctx.fillStyle = layer.color;
         ctx.fillRect(layer.x,0,W,H);
         ctx.fillRect(layer.x+W,0,W,H);
     });
@@ -216,7 +213,7 @@ function pauseMenuLoop(){
     drawGround();
     drawObstacles();
     drawPlayer();
-    updateProgress(); // progress bar vẫn hiển thị
+    updateProgress();
     drawPauseMenu();
     menuLoopId = requestAnimationFrame(pauseMenuLoop);
 }
@@ -260,7 +257,7 @@ canvas.addEventListener('click',function(e){
             if(Math.hypot(mx-b.x,my-b.y)<40){
                 if(i===0) hidePauseMenu(); // resume
                 if(i===1){resetGame(); hidePauseMenu();} // restart
-                if(i===2){practiceMode=!practiceMode; hidePauseMenu();} // practice
+                if(i===2){/* practice mode toggle */ hidePauseMenu();} 
             }
         });
     }
