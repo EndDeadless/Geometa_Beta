@@ -12,12 +12,16 @@ const attemptEl = document.getElementById('attempt');
 let attempt = 1;
 let paused = false;
 let gameStarted = false;
+let practiceMode = false;
 let gameLoopId;
 
 // Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 const mapSpeedMax = 6;
 let cameraX = 0;
+
+// Practice points
+let respawnPoints = [];
 
 // Obstacles
 let obstacles = [];
@@ -26,7 +30,7 @@ function generateSpikes(){
     obstacles = [];
     let lastX = 500;
     for(let i=0;i<spikeCount;i++){
-        let gap = 200 + Math.random()*100; // khoảng cách 200-300px
+        let gap = 200 + Math.random()*100; // 200-300px
         lastX += gap;
         obstacles.push({x:lastX, type:'spike'});
     }
@@ -135,7 +139,9 @@ function updateProgress(){
 function checkCollisionSpike(spike){
     let px=player.x, py=player.y, ps=player.size;
     let sx=spike.x-cameraX, sy=H-50-50, ss=50;
-    return px<sx+ss && px+ps>sx && py<sy+ss && py+ps>sy;
+    // padding nhỏ để player phải chạm phần nhọn mới thua
+    if(px+ps>sx+5 && px<sx+ss-5 && py+ps>sy+10) return true;
+    return false;
 }
 
 function checkCollision(){
@@ -159,17 +165,35 @@ function showAttempt(){
 
 // Reset game after fail
 function resetGame(){
-    cancelAnimationFrame(gameLoopId); // dừng game loop cũ
+    cancelAnimationFrame(gameLoopId);
     player.y = H-100;
     player.vy=0;
     player.onGround=true;
     player.angle=0;
     cameraX=0;
+    if(!practiceMode) respawnPoints = [];
     generateSpikes();
     bgMusic.currentTime = 0;
     bgMusic.play();
     progressEl.style.width = '0%';
     progressEl.textContent = '0%';
+    gameStarted=true;
+    gameLoop();
+}
+
+// Respawn at practice point
+function respawnPractice(){
+    if(respawnPoints.length===0){
+        resetGame();
+        return;
+    }
+    const lastPoint = respawnPoints[respawnPoints.length-1];
+    player.y = H-100;
+    player.vy=0;
+    player.onGround=true;
+    player.angle=0;
+    cameraX = lastPoint.cameraX;
+    bgMusic.currentTime = lastPoint.musicTime;
     gameStarted=true;
     gameLoop();
 }
@@ -189,7 +213,11 @@ function gameLoop(){
         gameStarted=false;
         attempt++;
         showAttempt();
-        setTimeout(resetGame,1000); // tự động chơi lại
+        if(practiceMode && respawnPoints.length>0){
+            setTimeout(respawnPractice,500);
+        } else {
+            setTimeout(resetGame,1000);
+        }
         return;
     }
     gameLoopId = requestAnimationFrame(gameLoop);
@@ -219,17 +247,72 @@ startBtn.addEventListener('click',()=>{
     });
 });
 
-// Pause button
+// Pause menu
+let pauseMenuVisible=false;
+function showPauseMenu(){
+    pauseMenuVisible=true;
+    paused=true;
+    bgMusic.pause();
+    drawPauseMenu();
+}
+
+function hidePauseMenu(){
+    pauseMenuVisible=false;
+    paused=false;
+    bgMusic.play();
+    gameLoop();
+    holdJump();
+}
+
 pauseBtn.addEventListener('click',()=>{
-    paused = !paused;
-    if(paused){
-        bgMusic.pause();
-        pauseBtn.textContent="Resume";
-    } else {
-        bgMusic.play();
-        pauseBtn.textContent="Pause";
-        gameLoop();
-        holdJump();
+    if(pauseMenuVisible) hidePauseMenu();
+    else showPauseMenu();
+});
+
+function drawPauseMenu(){
+    // overlay
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillRect(0,0,W,H);
+    // 3 buttons tròn: Resume, Restart, Practice
+    ctx.fillStyle='#0f0';
+    ctx.beginPath();
+    ctx.moveTo(W/2-100,H/2);
+    ctx.lineTo(W/2-80,H/2-30);
+    ctx.lineTo(W/2-80,H/2+30);
+    ctx.closePath();
+    ctx.fill(); // Resume
+
+    ctx.fillStyle='#ff0';
+    ctx.beginPath();
+    ctx.arc(W/2,H/2,30,0,Math.PI*2);
+    ctx.fill(); // Restart
+
+    ctx.fillStyle='#0af';
+    ctx.beginPath();
+    ctx.arc(W/2+100,H/2,30,0,Math.PI*2);
+    ctx.fill(); // Practice
+}
+
+// Placeholder for Practice buttons (logic to add points/remove points)
+canvas.addEventListener('click',function(e){
+    if(pauseMenuVisible){
+        // check resume button click
+        let dx=e.clientX-(W/2-80), dy=e.clientY-H/2;
+        if(dx>0 && dx<50 && dy>-30 && dy<30){
+            hidePauseMenu();
+        }
+        // check restart
+        let dx2=e.clientX-W/2, dy2=e.clientY-H/2;
+        if(Math.sqrt(dx2*dx2+dy2*dy2)<30){
+            resetGame();
+            hidePauseMenu();
+        }
+        // check practice
+        let dx3=e.clientX-(W/2+100), dy3=e.clientY-H/2;
+        if(Math.sqrt(dx3*dx3+dy3*dy3)<30){
+            practiceMode=!practiceMode;
+            hidePauseMenu();
+        }
     }
 });
 
