@@ -1,65 +1,33 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini Geometry Dash - Pro</title>
+<title>Mini Geometry Dash with Music</title>
 <style>
-  body {
-    margin:0;
-    overflow:hidden;
-    background:#111;
-    font-family:sans-serif;
-    position:relative;
-  }
-  canvas { display:block; }
-
-  #progressContainer {
-    position:absolute;
-    top:20px;
-    left:50%;
-    transform:translateX(-50%);
-    width:60%;
-    height:25px;
-    background:#555; /* nền xám */
-    border-radius:12px;
-    overflow:hidden;
-    z-index:10;
-  }
-  #progressBar {
-    width:0%;
-    height:100%;
-    background:#fff; /* màu tiến trình */
-    text-align:center;
-    line-height:25px;
-    color:black; /* chữ % */
-    font-weight:bold;
-    box-sizing:border-box;
-  }
-
-  #startBtn {
-    font-size:28px;
-    padding:15px 30px;
-    background:#FFD700;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    box-shadow:2px 2px 15px #000;
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    z-index:10;
-  }
+html,body{margin:0;padding:0;overflow:hidden;background:#222;font-family:sans-serif;}
+canvas{display:block;}
+#startBtn{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    padding:15px 30px;font-size:20px;cursor:pointer;z-index:10;
+}
+#progressBar{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    width:80%;height:20px;background:#888;border-radius:10px;overflow:hidden;z-index:10;
+}
+#progress{
+    width:0;height:100%;background:#fff;text-align:center;color:#000;
+    line-height:20px;font-weight:bold;
+}
 </style>
 </head>
 <body>
-<button id="startBtn">Start Game</button>
-<div id="progressContainer">
-  <div id="progressBar">0%</div>
-</div>
 <canvas id="gameCanvas"></canvas>
+<button id="startBtn">Start Game</button>
+<div id="progressBar"><div id="progress">0%</div></div>
+
+<!-- Nhạc sample hợp lệ CORS -->
 <audio id="bgMusic" src="assets/music/Giấc mơ ngân hà 2-đệm.mp3" preload="auto"></audio>
+
 <script src="game.js"></script>
 </body>
 </html>
