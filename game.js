@@ -24,9 +24,9 @@ let obstacles = [];
 const spikeCount = 120;
 function generateSpikes(){
     obstacles = [];
-    let lastX = 500; // bắt đầu từ ngoài màn hình
+    let lastX = 500;
     for(let i=0;i<spikeCount;i++){
-        let gap = 150 + Math.random()*60; // khoảng cách ngẫu nhiên từ 150-210 px
+        let gap = 200 + Math.random()*100; // khoảng cách 200-300px
         lastX += gap;
         obstacles.push({x:lastX, type:'spike'});
     }
@@ -70,7 +70,7 @@ function updatePlayer(){
         player.vy=0;
         player.onGround=true;
         player.angle=0;
-        if(holding) jump(); // nhảy liên tục khi chạm đất
+        if(holding) jump();
     } else {
         player.onGround=false;
     }
@@ -159,6 +159,7 @@ function showAttempt(){
 
 // Reset game after fail
 function resetGame(){
+    cancelAnimationFrame(gameLoopId); // dừng game loop cũ
     player.y = H-100;
     player.vy=0;
     player.onGround=true;
@@ -167,6 +168,8 @@ function resetGame(){
     generateSpikes();
     bgMusic.currentTime = 0;
     bgMusic.play();
+    progressEl.style.width = '0%';
+    progressEl.textContent = '0%';
     gameStarted=true;
     gameLoop();
 }
