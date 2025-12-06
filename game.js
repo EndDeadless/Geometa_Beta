@@ -15,11 +15,11 @@ let gameStarted = false;
 let cameraX = 0;
 const mapSpeed = 6;
 
-// Obstacles
+// Spike obstacles
 let obstacles = [];
-for(let i=1;i<=30;i++){
-    let type = Math.random()<0.5?'spike':'block';
-    obstacles.push({x:500+i*250,type});
+let spikeCount = 25;
+for(let i=0;i<spikeCount;i++){
+    obstacles.push({x:600 + i*300,type:'spike'});
 }
 
 // Parallax background
@@ -43,7 +43,7 @@ function drawBackground(){
     });
 }
 
-// Draw player with rotation animation
+// Draw player with rotation
 function drawPlayer(){
     ctx.save();
     ctx.translate(player.x+player.size/2, player.y+player.size/2);
@@ -64,17 +64,13 @@ function drawObstacles(){
     obstacles.forEach(obs=>{
         let screenX = obs.x - cameraX;
         if(screenX+50<0||screenX>W) return;
-        ctx.fillStyle = obs.type==='spike'?'#f00':'#00f';
-        if(obs.type==='spike'){
-            ctx.beginPath();
-            ctx.moveTo(screenX,H-50);
-            ctx.lineTo(screenX+25,H-50-50);
-            ctx.lineTo(screenX+50,H-50);
-            ctx.closePath();
-            ctx.fill();
-        } else {
-            ctx.fillRect(screenX,H-50-50,50,50);
-        }
+        ctx.fillStyle = '#f00';
+        ctx.beginPath();
+        ctx.moveTo(screenX,H-50);
+        ctx.lineTo(screenX+25,H-50-50);
+        ctx.lineTo(screenX+50,H-50);
+        ctx.closePath();
+        ctx.fill();
     });
 }
 
@@ -82,11 +78,11 @@ function drawObstacles(){
 function updatePlayer(){
     player.vy += player.gravity;
     player.y += player.vy;
-    player.angle += player.vy<0 ? 10 : -5; // rotate up/down
+    player.angle += player.vy<0 ? 10 : -5;
     if(player.angle>90) player.angle=90;
     if(player.angle<-90) player.angle=-90;
     const groundY = H-50-player.size;
-    if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true; player.angle=0;}
+    if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true;player.angle=0;}
 }
 
 // Update camera
@@ -100,12 +96,7 @@ function updateProgress(){
     progressEl.textContent = Math.floor(percent)+"%";
 }
 
-// Collision detection
-function checkCollisionRect(rect){
-    let px=player.x, py=player.y, ps=player.size;
-    let rx=rect.x-cameraX, ry=H-50-50, rs=50;
-    return px<rx+rs && px+ps>rx && py<ry+rs && py+ps>ry;
-}
+// Collision detection spike
 function checkCollisionSpike(spike){
     let px=player.x, py=player.y, ps=player.size;
     let sx=spike.x-cameraX, sy=H-50-50, ss=50;
@@ -113,8 +104,7 @@ function checkCollisionSpike(spike){
 }
 function checkCollision(){
     for(let obs of obstacles){
-        if(obs.type==='block' && checkCollisionRect(obs)) return true;
-        if(obs.type==='spike' && checkCollisionSpike(obs)) return true;
+        if(checkCollisionSpike(obs)) return true;
     }
     return false;
 }
@@ -146,19 +136,32 @@ function gameLoop(){
         gameStarted=false;
         attempt++;
         showAttempt();
-        setTimeout(()=>location.reload(),1000);
+        setTimeout(resetGame,1000);
         return;
     }
     requestAnimationFrame(gameLoop);
 }
 
+// Reset game without reload
+function resetGame(){
+    player.y = H-100;
+    player.vy=0;
+    player.onGround=true;
+    player.angle=0;
+    cameraX=0;
+    bgMusic.currentTime=0;
+    gameStarted=true;
+    gameLoop();
+}
+
 // Jump / hold to jump
 let holding=false;
-function jump(){if(player.onGround){player.vy=player.jump;player.onGround=false;}}
+function jump(){player.vy=player.jump;player.onGround=false;}
 canvas.addEventListener('touchstart',()=>{holding=true;jump();});
 canvas.addEventListener('touchend',()=>{holding=false;});
 canvas.addEventListener('mousedown',()=>{holding=true;jump();});
 canvas.addEventListener('mouseup',()=>{holding=false;});
+window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
 
 function holdJump(){
     if(holding) jump();
