@@ -6,30 +6,30 @@ let H = canvas.height = window.innerHeight;
 const startBtn = document.getElementById('startBtn');
 const bgMusic = document.getElementById('bgMusic');
 const progressEl = document.getElementById('progress');
+const attemptEl = document.getElementById('attempt');
 
-let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true};
+let attempt = 1;
+
+let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 let gameStarted = false;
 let cameraX = 0;
 const mapSpeed = 6;
 
-// Particle system for jump/glow
-let particles = [];
-
-// Obstacles: spike/block with spacing
+// Obstacles
 let obstacles = [];
-for(let i=1;i<=40;i++){
+for(let i=1;i<=30;i++){
     let type = Math.random()<0.5?'spike':'block';
     obstacles.push({x:500+i*250,type});
 }
 
-// Parallax background layers
+// Parallax background
 const bgLayers = [
     {color:'#111',x:0,speed:0.2},
     {color:'#222',x:0,speed:0.5},
     {color:'#333',x:0,speed:1}
 ];
 
-// Draw background parallax + glow
+// Draw background
 function drawBackground(){
     bgLayers.forEach(layer=>{
         layer.x -= layer.speed;
@@ -43,13 +43,14 @@ function drawBackground(){
     });
 }
 
-// Player
+// Draw player with rotation animation
 function drawPlayer(){
+    ctx.save();
+    ctx.translate(player.x+player.size/2, player.y+player.size/2);
+    ctx.rotate(player.angle*Math.PI/180);
     ctx.fillStyle="#0f0";
-    ctx.shadowColor = "#0f0";
-    ctx.shadowBlur = 15;
-    ctx.fillRect(player.x,player.y,player.size,player.size);
-    ctx.shadowBlur = 0;
+    ctx.fillRect(-player.size/2,-player.size/2,player.size,player.size);
+    ctx.restore();
 }
 
 // Ground
@@ -77,26 +78,15 @@ function drawObstacles(){
     });
 }
 
-// Particles
-function updateParticles(){
-    particles.forEach((p,i)=>{
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -=1;
-        ctx.fillStyle = `rgba(255,255,0,${p.life/50})`;
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,3,0,Math.PI*2);
-        ctx.fill();
-        if(p.life<=0) particles.splice(i,1);
-    });
-}
-
 // Update player
 function updatePlayer(){
     player.vy += player.gravity;
     player.y += player.vy;
+    player.angle += player.vy<0 ? 10 : -5; // rotate up/down
+    if(player.angle>90) player.angle=90;
+    if(player.angle<-90) player.angle=-90;
     const groundY = H-50-player.size;
-    if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true;}
+    if(player.y>groundY){player.y=groundY;player.vy=0;player.onGround=true; player.angle=0;}
 }
 
 // Update camera
@@ -129,6 +119,18 @@ function checkCollision(){
     return false;
 }
 
+// Attempt display animation
+function showAttempt(){
+    attemptEl.textContent = `Attempt ${attempt}`;
+    attemptEl.style.opacity = 1;
+    let alpha=1;
+    let interval = setInterval(()=>{
+        alpha -= 0.02;
+        attemptEl.style.opacity = alpha;
+        if(alpha<=0){clearInterval(interval);}
+    },30);
+}
+
 // Game loop
 function gameLoop(){
     if(!gameStarted) return;
@@ -137,53 +139,49 @@ function gameLoop(){
     drawGround();
     drawObstacles();
     drawPlayer();
-    updateParticles();
     updatePlayer();
     updateCamera();
     updateProgress();
     if(checkCollision()){
         gameStarted=false;
-        alert("Game Over!");
-        location.reload();
+        attempt++;
+        showAttempt();
+        setTimeout(()=>location.reload(),1000);
         return;
     }
     requestAnimationFrame(gameLoop);
 }
 
-// Jump
-function jump(){
-    if(player.onGround){
-        player.vy=player.jump;
-        player.onGround=false;
-        // tạo particles
-        for(let i=0;i<10;i++){
-            particles.push({
-                x:player.x+player.size/2,
-                y:player.y+player.size,
-                vx:(Math.random()-0.5)*4,
-                vy:Math.random()*-3-2,
-                life:50
-            });
-        }
-    }
+// Jump / hold to jump
+let holding=false;
+function jump(){if(player.onGround){player.vy=player.jump;player.onGround=false;}}
+canvas.addEventListener('touchstart',()=>{holding=true;jump();});
+canvas.addEventListener('touchend',()=>{holding=false;});
+canvas.addEventListener('mousedown',()=>{holding=true;jump();});
+canvas.addEventListener('mouseup',()=>{holding=false;});
+
+function holdJump(){
+    if(holding) jump();
+    requestAnimationFrame(holdJump);
 }
 
-// Start
+// Start button
 startBtn.addEventListener('click',()=>{
     bgMusic.play().then(()=>{
         gameStarted=true;
         startBtn.style.display="none";
+        showAttempt();
         gameLoop();
+        holdJump();
     }).catch(e=>{
         console.log("Music blocked:", e);
         gameStarted=true;
         startBtn.style.display="none";
+        showAttempt();
         gameLoop();
+        holdJump();
     });
 });
-
-canvas.addEventListener('touchstart',jump);
-canvas.addEventListener('mousedown',jump);
 
 window.addEventListener('resize',()=>{
     W = canvas.width = window.innerWidth;
