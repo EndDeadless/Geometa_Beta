@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Geometry Dash - Progress Only</title>
+  <title>Mini Geometry Dash - Start Game</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
       background: #111;
       font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
     canvas {
       display: block;
@@ -30,9 +34,19 @@
       height: 100%;
       background: #FFD700;
     }
+    #startBtn {
+      font-size: 28px;
+      padding: 15px 30px;
+      background: #FFD700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 2px 2px 10px #000;
+    }
   </style>
 </head>
 <body>
+  <button id="startBtn">Start Game</button>
   <div id="progressContainer">
     <div id="progressBar"></div>
   </div>
