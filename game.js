@@ -8,8 +8,6 @@ const progressBar = document.getElementById('progressBar');
 const bgMusic = document.getElementById('bgMusic');
 
 let obstacles = [];
-let obstacleSpeed = 10;
-let distanceTravelled = 0;
 let mapLength = 5000;
 
 // Player
@@ -25,7 +23,7 @@ const player = {
   onGround: false
 };
 
-// Background stars
+// Stars background
 let stars = [];
 for (let i = 0; i < 100; i++) {
   stars.push({
@@ -36,25 +34,45 @@ for (let i = 0; i < 100; i++) {
   });
 }
 
-// Controls
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && player.onGround) {
+// Jump function (for all inputs)
+function jump() {
+  if (player.onGround) {
     player.dy = player.jumpForce;
     player.onGround = false;
   }
-});
+}
 
-// Spawn obstacles
+// Controls
+window.addEventListener('keydown', e => { if(e.code === 'Space') jump(); });
+window.addEventListener('touchstart', jump);
+window.addEventListener('mousedown', jump);
+
+// Spawn triangle obstacles
 function spawnObstacle() {
-  const height = 50 + Math.random() * 150;
-  const colors = ['#00FFFF','#FF69B4','#7CFC00','#FFD700'];
+  const size = 50 + Math.random() * 100;
   obstacles.push({
     x: canvas.width + 50,
-    y: canvas.height - height,
-    width: 50,
-    height: height,
-    color: colors[Math.floor(Math.random() * colors.length)]
+    y: canvas.height - 100,
+    size: size,
+    color: '#FFD700',
+    startX: canvas.width + 50,
+    glowPhase: Math.random() * Math.PI * 2 // for glow animation
   });
+}
+
+// Draw triangle with glow animation
+function drawTriangle(obs) {
+  const glow = 10 + 10 * Math.sin(Date.now() * 0.005 + obs.glowPhase);
+  ctx.fillStyle = obs.color;
+  ctx.shadowColor = obs.color;
+  ctx.shadowBlur = glow;
+  ctx.beginPath();
+  ctx.moveTo(obs.x, obs.y);
+  ctx.lineTo(obs.x + obs.size, obs.y);
+  ctx.lineTo(obs.x + obs.size/2, obs.y - obs.size);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
 }
 
 // Game loop
@@ -74,7 +92,7 @@ function update() {
   // Player physics
   player.dy += player.gravity;
   player.y += player.dy;
-  if (player.y + player.height >= canvas.height - 100) {
+  if(player.y + player.height >= canvas.height - 100){
     player.y = canvas.height - 100 - player.height;
     player.dy = 0;
     player.onGround = true;
@@ -87,34 +105,28 @@ function update() {
   ctx.fillRect(player.x, player.y, player.width, player.height);
   ctx.shadowBlur = 0;
 
-  // Obstacles
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const obs = obstacles[i];
-    obs.x -= obstacleSpeed;
-
-    ctx.fillStyle = obs.color;
-    ctx.shadowColor = obs.color;
-    ctx.shadowBlur = 10;
-    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-    ctx.shadowBlur = 0;
-
-    // Collision
-    if (player.x < obs.x + obs.width &&
-        player.x + player.width > obs.x &&
-        player.y < obs.y + obs.height &&
-        player.y + player.height > obs.y) {
-      bgMusic.pause();
-      alert('Game Over! Map dừng lại.');
-      document.location.reload();
-    }
-
-    if (obs.x + obs.width < 0) obstacles.splice(i, 1);
+  // Progress based on music
+  let progressPercent = 0;
+  if(bgMusic.duration > 0){
+    progressPercent = Math.min((bgMusic.currentTime / bgMusic.duration) * 100, 100);
   }
-
-  // Update progress
-  distanceTravelled += obstacleSpeed;
-  const progressPercent = Math.min((distanceTravelled / mapLength) * 100, 100);
   progressBar.style.width = progressPercent + '%';
+
+  // Draw and move obstacles
+  obstacles.forEach(obs => {
+    obs.x = obs.startX - (progressPercent / 100) * mapLength;
+    drawTriangle(obs);
+
+    // Collision (bounding box of triangle)
+    if(player.x < obs.x + obs.size &&
+       player.x + player.width > obs.x &&
+       player.y < obs.y &&
+       player.y + player.height > obs.y - obs.size){
+         bgMusic.pause();
+         alert('Game Over! Map dừng lại.');
+         document.location.reload();
+    }
+  });
 
   requestAnimationFrame(update);
 }
@@ -122,21 +134,16 @@ function update() {
 // Spawn obstacles every 1.5s
 let obstacleInterval;
 
-function startGame() {
+// Start game
+function startGame(){
   startBtn.style.display = 'none';
-  bgMusic.play();
-  distanceTravelled = 0;
   obstacles = [];
-  
-  // Obstacle speed based on music duration
-  bgMusic.addEventListener('loadedmetadata', () => {
-    const musicDuration = bgMusic.duration;
-    obstacleSpeed = mapLength / (musicDuration * 60);
-  });
+  distanceTravelled = 0;
+
+  bgMusic.play();
 
   obstacleInterval = setInterval(spawnObstacle, 1500);
 
-  // End game when music ends
   bgMusic.addEventListener('ended', () => {
     clearInterval(obstacleInterval);
     alert('Map kết thúc! Bạn đã đi được 100%');
