@@ -3,32 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Geometry Dash</title>
+  <title>Mini Geometry Dash Pro</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      background: linear-gradient(to bottom, #87CEFA, #fff);
+      background: #111;
       font-family: sans-serif;
     }
     canvas {
       display: block;
-      background: #87CEFA;
+      background: linear-gradient(to bottom, #1e3c72, #2a5298);
     }
     #score {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 24px;
+      top: 20px;
+      left: 20px;
+      font-size: 28px;
       color: #fff;
       font-weight: bold;
-      text-shadow: 1px 1px 2px #000;
+      text-shadow: 2px 2px 5px #000;
     }
   </style>
 </head>
 <body>
   <div id="score">Score: 0</div>
   <canvas id="gameCanvas"></canvas>
+  <audio id="bgMusic" src="music.mp3" loop autoplay></audio>
   <script src="game.js"></script>
 </body>
 </html>
