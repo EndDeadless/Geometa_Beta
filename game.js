@@ -108,7 +108,6 @@ startBtn.addEventListener('click', ()=>{
         startBtn.style.display="none";
         gameLoop();
     }).catch(e=>{
-        console.log("Music blocked:", e);
         gameStarted=true;
         startBtn.style.display="none";
         gameLoop();
