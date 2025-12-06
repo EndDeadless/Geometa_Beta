@@ -13,7 +13,7 @@ let attempt = 1;
 let paused = false;
 let gameStarted = false;
 let gameLoopId;
-let practiceMode = false;
+let menuLoopId;
 
 // Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
@@ -27,7 +27,7 @@ function generateSpikes(){
     obstacles = [];
     let lastX = 500;
     for(let i=0;i<spikeCount;i++){
-        let gap = 250 + Math.random()*150; // 250-400px khoảng cách xa hơn
+        let gap = 250 + Math.random()*200; // khoảng cách xa hơn
         lastX += gap;
         obstacles.push({x:lastX, type:'spike'});
     }
@@ -198,16 +198,28 @@ function showPauseMenu(){
     pauseMenuVisible=true;
     paused=true;
     bgMusic.pause();
-    drawPauseMenu();
+    pauseMenuLoop();
 }
 function hidePauseMenu(){
     pauseMenuVisible=false;
     paused=false;
+    cancelAnimationFrame(menuLoopId);
     bgMusic.play();
     gameLoop();
 }
 
-pauseBtn.addEventListener('click',()=>{if(pauseMenuVisible) hidePauseMenu(); else showPauseMenu();});
+// Pause Menu render loop
+function pauseMenuLoop(){
+    if(!pauseMenuVisible) return;
+    ctx.clearRect(0,0,W,H);
+    drawBackground();
+    drawGround();
+    drawObstacles();
+    drawPlayer();
+    updateProgress(); // progress bar vẫn hiển thị
+    drawPauseMenu();
+    menuLoopId = requestAnimationFrame(pauseMenuLoop);
+}
 
 function drawPauseMenu(){
     ctx.fillStyle='rgba(0,0,0,0.7)';
