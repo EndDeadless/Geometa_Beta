@@ -269,50 +269,74 @@ pauseBtn.addEventListener('click',()=>{
     else showPauseMenu();
 });
 
+// Draw Pause Menu with icons
 function drawPauseMenu(){
-    // overlay
     ctx.fillStyle='rgba(0,0,0,0.7)';
     ctx.fillRect(0,0,W,H);
-    // 3 buttons tròn: Resume, Restart, Practice
+
+    // Resume button (triangle)
+    ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.arc(W/2-100,H/2,40,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.beginPath();
+    ctx.moveTo(W/2-110,H/2-20);
+    ctx.lineTo(W/2-110,H/2+20);
+    ctx.lineTo(W/2-70,H/2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Restart button (circle arrow)
+    ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.arc(W/2,H/2,40,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle='#000';
+    ctx.lineWidth=5;
+    ctx.beginPath();
+    ctx.arc(W/2,H/2,25,0,Math.PI*1.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W/2+25,H/2);
+    ctx.lineTo(W/2+10,H/2-15);
+    ctx.lineTo(W/2+10,H/2+15);
+    ctx.closePath();
+    ctx.fillStyle='#000';
+    ctx.fill();
+
+    // Practice button (rhombus green)
+    ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.arc(W/2+100,H/2,40,0,Math.PI*2);
+    ctx.fill();
     ctx.fillStyle='#0f0';
     ctx.beginPath();
-    ctx.moveTo(W/2-100,H/2);
-    ctx.lineTo(W/2-80,H/2-30);
-    ctx.lineTo(W/2-80,H/2+30);
+    ctx.moveTo(W/2+100,H/2-20);
+    ctx.lineTo(W/2+120,H/2);
+    ctx.lineTo(W/2+100,H/2+20);
+    ctx.lineTo(W/2+80,H/2);
     ctx.closePath();
-    ctx.fill(); // Resume
-
-    ctx.fillStyle='#ff0';
-    ctx.beginPath();
-    ctx.arc(W/2,H/2,30,0,Math.PI*2);
-    ctx.fill(); // Restart
-
-    ctx.fillStyle='#0af';
-    ctx.beginPath();
-    ctx.arc(W/2+100,H/2,30,0,Math.PI*2);
-    ctx.fill(); // Practice
+    ctx.fill();
 }
 
-// Placeholder for Practice buttons (logic to add points/remove points)
+// Pause Menu click
 canvas.addEventListener('click',function(e){
     if(pauseMenuVisible){
-        // check resume button click
-        let dx=e.clientX-(W/2-80), dy=e.clientY-H/2;
-        if(dx>0 && dx<50 && dy>-30 && dy<30){
-            hidePauseMenu();
-        }
-        // check restart
-        let dx2=e.clientX-W/2, dy2=e.clientY-H/2;
-        if(Math.sqrt(dx2*dx2+dy2*dy2)<30){
-            resetGame();
-            hidePauseMenu();
-        }
-        // check practice
-        let dx3=e.clientX-(W/2+100), dy3=e.clientY-H/2;
-        if(Math.sqrt(dx3*dx3+dy3*dy3)<30){
-            practiceMode=!practiceMode;
-            hidePauseMenu();
-        }
+        let mx=e.clientX, my=e.clientY;
+        // Resume
+        if(Math.hypot(mx-(W/2-100),my-H/2)<40) hidePauseMenu();
+        // Restart
+        if(Math.hypot(mx-(W/2),my-H/2)<40){resetGame(); hidePauseMenu();}
+        // Practice Mode
+        if(Math.hypot(mx-(W/2+100),my-H/2)<40){practiceMode=!practiceMode; hidePauseMenu();}
+    }
+});
+
+// Practice mode buttons (placeholders)
+canvas.addEventListener('click',function(e){
+    if(practiceMode){
+        // TODO: implement add/remove respawn points
     }
 });
 
