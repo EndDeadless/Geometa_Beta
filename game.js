@@ -35,11 +35,21 @@ for (let i = 0; i < 100; i++) {
   });
 }
 
+// Music
+const bgMusic = document.getElementById('bgMusic');
+let musicStarted = false;
+
 // Controls
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && player.onGround) {
-    player.dy = player.jumpForce;
-    player.onGround = false;
+  if (e.code === 'Space') {
+    if (!musicStarted) {
+      bgMusic.play();
+      musicStarted = true;
+    }
+    if (player.onGround) {
+      player.dy = player.jumpForce;
+      player.onGround = false;
+    }
   }
 });
 
@@ -104,7 +114,7 @@ function update() {
         player.x + player.width > obs.x &&
         player.y < obs.y + obs.height &&
         player.y + player.height > obs.y) {
-      document.getElementById('bgMusic').pause();
+      bgMusic.pause();
       alert('Game Over! Score: ' + score);
       document.location.reload();
     }
