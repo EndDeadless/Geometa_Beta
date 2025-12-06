@@ -4,25 +4,33 @@ let W = canvas.width = window.innerWidth;
 let H = canvas.height = window.innerHeight;
 
 const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
 const bgMusic = document.getElementById('bgMusic');
 const progressEl = document.getElementById('progress');
 const attemptEl = document.getElementById('attempt');
 
 let attempt = 1;
+let paused = false;
 
 // Player
 let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
 let gameStarted = false;
 let cameraX = 0;
-const mapSpeedMax = 6; // tốc độ map, tách hoàn toàn với thanh tiến trình
+const mapSpeedMax = 6;
 
 // Spike tam giác
 let obstacles = [];
-let spikeCount = 120;
-for(let i=0;i<spikeCount;i++){
-    let x = 500 + i*180 + Math.random()*80; // phân bổ hợp lý
-    obstacles.push({x, type:'spike'});
+const spikeCount = 120;
+function generateSpikes(){
+    obstacles = [];
+    let lastX = 500;
+    for(let i=0;i<spikeCount;i++){
+        let gap = 180 + Math.random()*120; // khoảng cách hợp lý
+        lastX += gap;
+        obstacles.push({x:lastX, type:'spike'});
+    }
 }
+generateSpikes();
 
 // Background parallax
 const bgLayers = [
@@ -89,26 +97,26 @@ function updatePlayer(){
         player.vy=0;
         player.onGround=true;
         player.angle=0;
-        if(holding) jump(); // giữ nhảy liên tục khi chạm đất
+        if(holding) jump();
     } else {
-        player.onGround=false; // đang trên không
+        player.onGround=false;
     }
 }
 
-// Jump logic chuẩn Geometry Dash
+// Jump logic
 function jump(){
-    if(player.onGround){ // CHỈ NHẢY KHI CHẠM ĐẤT
+    if(player.onGround){
         player.vy = player.jump;
         player.onGround=false;
     }
 }
 
-// Update camera (tách rời với tiến trình nhạc)
+// Update camera
 function updateCamera(){
-    cameraX += mapSpeedMax; // camera di chuyển tốc độ cố định
+    cameraX += mapSpeedMax;
 }
 
-// Progress bar theo nhạc
+// Update progress bar
 function updateProgress(){
     if(!bgMusic.duration) return;
     let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
@@ -141,19 +149,20 @@ function showAttempt(){
     },30);
 }
 
-// Reset game nội bộ
+// Reset game
 function resetGame(){
     player.y = H-100;
     player.vy=0;
     player.onGround=true;
     player.angle=0;
     cameraX=0;
+    generateSpikes();
     gameStarted=true;
 }
 
 // Game loop
 function gameLoop(){
-    if(!gameStarted) return;
+    if(!gameStarted || paused) return;
     ctx.clearRect(0,0,W,H);
     drawBackground();
     drawGround();
@@ -166,7 +175,9 @@ function gameLoop(){
         gameStarted=false;
         attempt++;
         showAttempt();
-        setTimeout(resetGame,1000);
+        setTimeout(()=>{
+            resetGame(); // tự động chơi lại khi thua
+        },1000);
         return;
     }
     requestAnimationFrame(gameLoop);
@@ -180,7 +191,7 @@ canvas.addEventListener('mousedown',()=>{holding=true;jump();});
 canvas.addEventListener('mouseup',()=>{holding=false;});
 window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
 
-// Keep jump while holding (only when chạm đất)
+// Keep jump while holding
 function holdJump(){
     if(holding) jump();
     requestAnimationFrame(holdJump);
@@ -202,6 +213,20 @@ startBtn.addEventListener('click',()=>{
         gameLoop();
         holdJump();
     });
+});
+
+// Pause button
+pauseBtn.addEventListener('click',()=>{
+    paused = !paused;
+    if(paused){
+        bgMusic.pause();
+        pauseBtn.textContent="Resume";
+    } else {
+        bgMusic.play();
+        pauseBtn.textContent="Pause";
+        gameLoop();
+        holdJump();
+    }
 });
 
 window.addEventListener('resize',()=>{
