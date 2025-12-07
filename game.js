@@ -594,23 +594,6 @@ function checkOrientationAndMobile(){
   }
 }
 
-// ===== ROTATE CONFIRM BUTTON (ADD ONLY) =====
-const rotatedBtn = document.getElementById('rotatedBtn');
-
-if(rotatedBtn){
-  rotatedBtn.addEventListener('click', () => {
-    const portrait = window.innerHeight > window.innerWidth;
-    if(!portrait){
-      rotateOverlay.style.display = 'none';
-      paused = false;
-      if(gameStarted){
-        try { bgMusic.play(); } catch(e){}
-        gameLoop();
-      }
-    }
-  });
-}
-
 // call on load and resize/orientationchange
 window.addEventListener('resize', () => {
   W = canvas.width = window.innerWidth;
