@@ -420,7 +420,7 @@ function gameLoop(){
   drawPlayer();
 
    // ✅ vẽ high score
-  drawHighScore();
+  
    
   // update physics & world
   updatePlayer();
