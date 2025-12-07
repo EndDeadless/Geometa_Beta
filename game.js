@@ -1,231 +1,232 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = window.innerWidth;
-let H = canvas.height = window.innerHeight;
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-const startBtn = document.getElementById('startBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const bgMusic = document.getElementById('bgMusic');
-const progressEl = document.getElementById('progress');
-const attemptEl = document.getElementById('attempt');
+let W = canvas.width = innerWidth;
+let H = canvas.height = innerHeight;
 
-let attempt = 1;
-let paused = false;
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const progressEl = document.getElementById("progress");
+const attemptEl = document.getElementById("attempt");
+const bgMusic = document.getElementById("bgMusic");
+
 let gameStarted = false;
-let gameLoopId;
+let paused = false;
+let attempt = 1;
 
-// Player
-let player = {x:100, y:H-100, size:50, vy:0, gravity:1, jump:-18, onGround:true, angle:0};
-const mapSpeedMax = 6;
+/* PLAYER */
+const player = {
+    x:100, y:H-100,
+    size:50,
+    vy:0,
+    gravity:1,
+    jump:-18,
+    onGround:true,
+    angle:0
+};
+
+/* CAMERA */
 let cameraX = 0;
+const speed = 6;
 
-// Obstacles
+/* OBSTACLE */
 let obstacles = [];
-const spikeCount = 120;
 function generateSpikes(){
-    obstacles = [];
-    let lastX = 500;
-    for(let i=0;i<spikeCount;i++){
-        let gap = 200 + Math.random()*100; // 200-300px
-        lastX += gap;
-        obstacles.push({x:lastX, type:'spike'});
+    obstacles=[];
+    let x=500;
+    for(let i=0;i<120;i++){
+        x+=200+Math.random()*100;
+        obstacles.push({x});
     }
 }
 generateSpikes();
 
-// Background parallax
-const bgLayers = [
-    {color:'#111',x:0,speed:0.2},
-    {color:'#222',x:0,speed:0.5},
-    {color:'#333',x:0,speed:1}
-];
+/* PRACTICE MODE */
+let practiceMode = false;
+let checkpoints = [];
 
-// Controls
-let holding=false;
-canvas.addEventListener('touchstart',()=>{holding=true;jump();});
-canvas.addEventListener('touchend',()=>{holding=false;});
-canvas.addEventListener('mousedown',()=>{holding=true;jump();});
-canvas.addEventListener('mouseup',()=>{holding=false;});
-window.addEventListener('keydown',e=>{if(e.code==='Space') jump();});
+/* INPUT */
+window.addEventListener("keydown",e=>{
+    if(e.code==="Space") jump();
+});
 
-function jump(){if(player.onGround){player.vy=player.jump; player.onGround=false;}}
+/* JUMP */
+function jump(){
+    if(player.onGround){
+        player.vy = player.jump;
+        player.onGround = false;
+    }
+}
 
-// Player update
+/* UPDATE */
 function updatePlayer(){
     player.vy += player.gravity;
     player.y += player.vy;
-    player.angle += player.vy<0?10:-5;
-    if(player.angle>90) player.angle=90;
-    if(player.angle<-90) player.angle=-90;
-    const groundY = H-50-player.size;
-    if(player.y>=groundY){player.y=groundY; player.vy=0; player.onGround=true; player.angle=0; if(holding) jump();} 
-    else player.onGround=false;
+
+    const ground = H-50-player.size;
+    if(player.y>=ground){
+        player.y=ground;
+        player.vy=0;
+        player.onGround=true;
+        player.angle=0;
+    }
 }
 
-// Draw
-function drawBackground(){
-    bgLayers.forEach(layer=>{
-        layer.x -= layer.speed;
-        if(layer.x <= -W) layer.x =0;
-        let grd = ctx.createLinearGradient(0,0,W,H);
-        grd.addColorStop(0, layer.color);
-        grd.addColorStop(1, '#000');
-        ctx.fillStyle = grd;
-        ctx.fillRect(layer.x,0,W,H);
-        ctx.fillRect(layer.x+W,0,W,H);
-    });
-}
+/* DRAW */
 function drawPlayer(){
     ctx.save();
-    ctx.translate(player.x+player.size/2,player.y+player.size/2);
+    ctx.translate(player.x+25,player.y+25);
     ctx.rotate(player.angle*Math.PI/180);
     ctx.fillStyle="#0f0";
-    ctx.fillRect(-player.size/2,-player.size/2,player.size,player.size);
+    ctx.fillRect(-25,-25,50,50);
     ctx.restore();
 }
-function drawGround(){ctx.fillStyle="#555"; ctx.fillRect(0,H-50,W,50);}
+function drawGround(){
+    ctx.fillStyle="#555";
+    ctx.fillRect(0,H-50,W,50);
+}
 function drawObstacles(){
-    obstacles.forEach(obs=>{
-        let screenX = obs.x-cameraX;
-        if(screenX+50<0||screenX>W) return;
-        ctx.fillStyle = '#f00';
+    ctx.fillStyle="#f00";
+    obstacles.forEach(o=>{
+        let x=o.x-cameraX;
+        if(x<-50||x>W) return;
         ctx.beginPath();
-        ctx.moveTo(screenX,H-50);
-        ctx.lineTo(screenX+25,H-50-50);
-        ctx.lineTo(screenX+50,H-50);
-        ctx.closePath();
+        ctx.moveTo(x,H-50);
+        ctx.lineTo(x+25,H-100);
+        ctx.lineTo(x+50,H-50);
         ctx.fill();
     });
 }
 
-// Camera
-function updateCamera(){cameraX+=mapSpeedMax;}
-
-// Progress
-function updateProgress(){
-    if(!bgMusic.duration) return;
-    let percent = Math.min((bgMusic.currentTime/bgMusic.duration)*100,100);
-    progressEl.style.width=percent+"%";
-    progressEl.textContent=Math.floor(percent)+"%";
+/* CHECKPOINT ICONS */
+function drawCheckpoints(){
+    if(!practiceMode) return;
+    ctx.fillStyle="#0f0";
+    checkpoints.forEach(c=>{
+        let x=c.x-cameraX;
+        if(x<0||x>W) return;
+        ctx.beginPath();
+        ctx.moveTo(x,H-140);
+        ctx.lineTo(x+10,H-130);
+        ctx.lineTo(x,H-120);
+        ctx.lineTo(x-10,H-130);
+        ctx.fill();
+    });
 }
 
-// Collision
-function checkCollisionSpike(spike){
-    let px=player.x,py=player.y,ps=player.size;
-    let sx=spike.x-cameraX,sy=H-50-50,ss=50;
-    if(px+ps>sx+5 && px<sx+ss-5 && py+ps>sy+10) return true;
-    return false;
-}
-function checkCollision(){for(let obs of obstacles) if(checkCollisionSpike(obs)) return true; return false;}
+/* PRACTICE BUTTONS */
+function drawPracticeButtons(){
+    if(!practiceMode) return;
 
-// Attempt
-function showAttempt(){
-    attemptEl.textContent = `Attempt ${attempt}`;
-    attemptEl.style.opacity=1;
-    let alpha=1;
-    let interval = setInterval(()=>{
-        alpha-=0.02;
-        attemptEl.style.opacity=alpha;
-        if(alpha<=0) clearInterval(interval);
-    },30);
+    let size=60, y=H-80;
+    let addX=W/2-50, delX=W/2+50;
+
+    ctx.fillStyle="#333";
+    ctx.fillRect(addX-30,y-30,60,60);
+    ctx.fillRect(delX-30,y-30,60,60);
+
+    ctx.fillStyle="#0f0";
+    ctx.beginPath();
+    ctx.moveTo(addX,y-15);
+    ctx.lineTo(addX+15,y);
+    ctx.lineTo(addX,y+15);
+    ctx.lineTo(addX-15,y);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(delX,y-15);
+    ctx.lineTo(delX+15,y);
+    ctx.lineTo(delX,y+15);
+    ctx.lineTo(delX-15,y);
+    ctx.fill();
+
+    ctx.strokeStyle="#000";
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    ctx.moveTo(delX-15,y-15);
+    ctx.lineTo(delX+15,y+15);
+    ctx.stroke();
 }
 
-// Reset
+/* COLLISION */
+function hitSpike(o){
+    let px=player.x+25;
+    let sx=o.x-cameraX+25;
+    return Math.abs(px-sx)<35 && player.y+50>H-100;
+}
+
+/* CLICK */
+canvas.addEventListener("click",e=>{
+    let mx=e.clientX,my=e.clientY;
+
+    if(!practiceMode) return;
+
+    let y=H-80, size=60;
+    if(Math.abs(mx-(W/2-50))<30 && Math.abs(my-y)<30){
+        checkpoints.push({
+            x:cameraX,
+            y:player.y,
+            vy:player.vy,
+            music:bgMusic.currentTime
+        });
+    }
+    if(Math.abs(mx-(W/2+50))<30 && Math.abs(my-y)<30){
+        checkpoints.pop();
+    }
+});
+
+/* RESET */
 function resetGame(){
-    cancelAnimationFrame(gameLoopId);
-    player.y=H-100; player.vy=0; player.onGround=true; player.angle=0; cameraX=0;
-    generateSpikes();
+    cameraX=0;
+    player.y=H-100;
+    player.vy=0;
+    checkpoints=[];
     bgMusic.currentTime=0;
-    bgMusic.play();
-    progressEl.style.width='0%'; progressEl.textContent='0%';
-    gameStarted=true;
-    gameLoop();
 }
 
-// Game loop
+/* LOOP */
 function gameLoop(){
-    if(!gameStarted || paused) return;
+    if(!gameStarted||paused) return;
+
     ctx.clearRect(0,0,W,H);
-    drawBackground();
     drawGround();
     drawObstacles();
+    drawCheckpoints();
     drawPlayer();
+    drawPracticeButtons();
     updatePlayer();
-    updateCamera();
-    updateProgress();
-    if(checkCollision()){
-        gameStarted=false;
-        attempt++;
-        showAttempt();
-        setTimeout(resetGame,1000);
-        return;
+
+    cameraX+=speed;
+    progressEl.style.width = (bgMusic.currentTime/bgMusic.duration*100||0)+"%";
+
+    for(let o of obstacles){
+        if(hitSpike(o)){
+            if(practiceMode&&checkpoints.length){
+                let c=checkpoints.at(-1);
+                cameraX=c.x;
+                player.y=c.y;
+                player.vy=c.vy;
+                bgMusic.currentTime=c.music;
+            }else{
+                attempt++;
+                resetGame();
+            }
+            break;
+        }
     }
-    gameLoopId=requestAnimationFrame(gameLoop);
+    requestAnimationFrame(gameLoop);
 }
 
-// Start
-startBtn.addEventListener('click',()=>{
-    bgMusic.play().then(()=>{
-        gameStarted=true;
-        startBtn.style.display="none";
-        showAttempt();
-        gameLoop();
-    }).catch(e=>{
-        gameStarted=true;
-        startBtn.style.display="none";
-        showAttempt();
-        gameLoop();
-    });
-});
-
-// Pause menu animation + icons
-let pauseMenuVisible=false;
-function showPauseMenu(){
-    pauseMenuVisible=true;
-    paused=true;
-    bgMusic.pause();
-    drawPauseMenu();
-}
-function hidePauseMenu(){
-    pauseMenuVisible=false;
-    paused=false;
+/* START */
+startBtn.onclick=()=>{
+    startBtn.style.display="none";
     bgMusic.play();
+    gameStarted=true;
     gameLoop();
-}
-pauseBtn.addEventListener('click',()=>{if(pauseMenuVisible) hidePauseMenu(); else showPauseMenu();});
+};
 
-function drawPauseMenu(){
-    ctx.fillStyle='rgba(0,0,0,0.7)';
-    ctx.fillRect(0,0,W,H);
-    // Resume
-    drawCircleIcon(W/2-100,H/2,40,'#fff','triangle','#000');
-    // Restart
-    drawCircleIcon(W/2,H/2,40,'#fff','arrow','#000');
-    // Practice
-    drawCircleIcon(W/2+100,H/2,40,'#fff','rhombus','#0f0');
-}
-function drawCircleIcon(x,y,r,bgColor,type,iconColor){
-    ctx.fillStyle=bgColor; ctx.beginPath();
-    ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle=iconColor; ctx.beginPath();
-    if(type==='triangle'){
-        ctx.moveTo(x-r/2,y-r/2); ctx.lineTo(x-r/2,y+r/2); ctx.lineTo(x+r/2,y); ctx.closePath();
-    } else if(type==='arrow'){
-        ctx.arc(x,y,r/2,0,Math.PI*1.5); ctx.moveTo(x+r/2,y); ctx.lineTo(x+r/4,y-r/4); ctx.lineTo(x+r/4,y+r/4); ctx.closePath();
-    } else if(type==='rhombus'){
-        ctx.moveTo(x,y-r/2); ctx.lineTo(x+r/2,y); ctx.lineTo(x,y+r/2); ctx.lineTo(x-r/2,y); ctx.closePath();
-    }
-    ctx.fill();
-}
-
-// Pause Menu click
-canvas.addEventListener('click',function(e){
-    if(pauseMenuVisible){
-        let mx=e.clientX,my=e.clientY;
-        if(Math.hypot(mx-(W/2-100),my-H/2)<40) hidePauseMenu(); 
-        if(Math.hypot(mx-(W/2),my-H/2)<40){resetGame(); hidePauseMenu();}
-        if(Math.hypot(mx-(W/2+100),my-H/2)<40){practiceMode=!practiceMode; hidePauseMenu();}
-    }
-});
-
-window.addEventListener('resize',()=>{W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight;});
+/* PAUSE */
+pauseBtn.onclick=()=>{
+    practiceMode=!practiceMode;
+    checkpoints=[];
+};
