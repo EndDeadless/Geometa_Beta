@@ -13,6 +13,8 @@ const attemptEl = document.getElementById('attempt');
 const cpSetBtn = document.getElementById('cpSet');
 const cpDelBtn = document.getElementById('cpDel');
 
+const rotateOverlay = document.getElementById('rotateOverlay'); // <<< MOD
+
 let gameLoopId = null;
 let gameStarted = false;
 let paused = false;
@@ -59,34 +61,16 @@ const bgLayers = [
 
 /* ===========================
    PRACTICE & CHECKPOINTS
-   ===========================
-   checkpoints array stores objects:
-     {
-       worldX: <number>,             // absolute world x where checkpoint set
-       playerWorldY: <number>,       // absolute world Y (so we can respawn exactly)
-       playerOnGround: <bool>,       // whether player was on ground at moment of set
-       time: <number>                // bgMusic.currentTime at set
-     }
-   Behavior:
-   - When toggling practice ON => reset game to start (attempt = 1), clear checkpoints, auto-close menu, show cp buttons.
-   - When toggling practice OFF => reset game to start (attempt = 1), clear checkpoints, auto-close menu, hide cp buttons.
-   - Only in practice mode can press 'c' to place, 'x' to delete (and the two DOM square buttons also work).
-   - When dying in practice: attempt still increments, then respawn to last checkpoint (if exist), music/time set to checkpoint.time.
-   - Respawn must set player.y EXACTLY to saved playerWorldY and camera so that player screen position is identical.
-*/
+   =========================== */
 let practiceMode = false;
 let checkpoints = []; // stack: push -> newest is last index
 
 function placeCheckpointFromCurrentPlayer(){
-  // compute absolute worldX and worldY at the moment of placement
   const worldX = cameraX + player.x;
-  // world Y: compute absolute Y relative to canvas - top is 0, so player.y is already screen Y
-  // But absolute world Y is just the screen Y (y doesn't change when camera moves vertically), so store player.y
   const playerWorldY = player.y;
   const playerOnGround = player.onGround;
   const time = bgMusic.currentTime || 0;
   checkpoints.push({ worldX, playerWorldY, playerOnGround, time });
-  // no immediate reset; icon drawn in render loop
 }
 
 function deleteLastCheckpoint(){
@@ -98,58 +82,49 @@ function deleteLastCheckpoint(){
 /* ===========================
    INPUT HANDLING & AUTO-JUMP
    ===========================
-   Requirements:
-   - Click / Space / Touch press triggers a jump immediately.
-   - If the input is HELD (holding=true), then when the player lands the update loop should auto-invoke jump() once more to mimic Geometry Dash's "hold to auto-jump on landing".
-   - When input released, holding=false so auto-jump stops after next landing.
+   We'll use Pointer Events to unify mouse & touch.
+   On mobile, pointer events ensure we get coordinates for menu taps.
+   Also keep 'holding' semantics.
 */
 let holding = false;
 
-function jump(){
-  // Only jump if on ground (one discrete jump)
-  if(player.onGround){
-    player.vy = player.jump;
-    player.onGround = false;
-  }
-}
+// unify pointer down/up to cover touch/mouse/stylus
+canvas.addEventListener('pointerdown', (e) => {
+  // If pause menu visible, treat pointerdown as menu interaction (coordinates)
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
 
-// Mouse / touch
-canvas.addEventListener('touchstart', (e) => {
-  e.preventDefault();
+  if(pauseMenuVisible){
+    // handle menu icon taps by checking dynamic positions
+    handlePauseMenuPointer(mx, my);
+    e.preventDefault();
+    return;
+  }
+
+  // Otherwise, gameplay input: start jump and set holding
   holding = true;
   jump();
-});
-canvas.addEventListener('touchend', (e) => {
   e.preventDefault();
+}, {passive:false}); // <<< MOD
+
+canvas.addEventListener('pointerup', (e) => {
+  // pointerup ends holding - but if pointer started outside canvas it may still trigger: simple set false
   holding = false;
-});
-canvas.addEventListener('mousedown', (e) => {
-  // left button only
-  if(e.button === 0){
-    e.preventDefault();
-    holding = true;
-    jump();
-  }
-});
-canvas.addEventListener('mouseup', (e) => {
-  if(e.button === 0){
-    e.preventDefault();
-    holding = false;
-  }
-});
-canvas.addEventListener('mouseout', () => {
-  // if cursor leaves canvas, stop holding
+  e.preventDefault();
+}, {passive:false});
+
+canvas.addEventListener('pointercancel', () => {
   holding = false;
 });
 
-// Keyboard
+// Also support keyboard for desktop
 window.addEventListener('keydown', (e) => {
   if(e.code === 'Space'){
     e.preventDefault();
     holding = true;
     jump();
   } else if(e.key === 'c' || e.key === 'C'){
-    // only allow when in practice mode
     if(practiceMode) placeCheckpointFromCurrentPlayer();
   } else if(e.key === 'x' || e.key === 'X'){
     if(practiceMode) deleteLastCheckpoint();
@@ -165,6 +140,13 @@ window.addEventListener('keyup', (e) => {
 /* ===========================
    PLAYER UPDATE / PHYSICS
    =========================== */
+function jump(){
+  if(player.onGround){
+    player.vy = player.jump;
+    player.onGround = false;
+  }
+}
+
 function updatePlayer(){
   player.vy += player.gravity;
   player.y += player.vy;
@@ -179,12 +161,10 @@ function updatePlayer(){
     // landed
     player.y = groundY;
     player.vy = 0;
-    // detect landing event: if previously not on ground, now landed and holding -> auto-jump
     const justLanded = !player.onGround;
     player.onGround = true;
     player.angle = 0;
     if(justLanded && holding){
-      // auto-jump immediately on landing if user is holding
       jump();
     }
   } else {
@@ -237,15 +217,13 @@ function drawObstacles(){
 }
 
 function drawCheckpoints(){
-  // draw every checkpoint as a green rhombus at saved worldX and saved playerWorldY
   checkpoints.forEach(cp => {
     const screenX = cp.worldX - cameraX;
     const screenY = cp.playerWorldY;
-    // only draw if on screen (with margin)
     if(screenX < -50 || screenX > W + 50) return;
     const cx = screenX;
-    const cy = screenY; // place exactly where player was when set
-    const r = Math.max(10, Math.min(20, player.size/4)); // reasonable size
+    const cy = screenY;
+    const r = Math.max(10, Math.min(20, player.size/4));
     ctx.fillStyle = '#0f0';
     ctx.beginPath();
     ctx.moveTo(cx, cy - r);
@@ -254,7 +232,6 @@ function drawCheckpoints(){
     ctx.lineTo(cx - r, cy);
     ctx.closePath();
     ctx.fill();
-    // optional: draw small outline
     ctx.strokeStyle = '#070';
     ctx.lineWidth = 1;
     ctx.stroke();
@@ -266,7 +243,6 @@ function drawCheckpoints(){
    =========================== */
 function updateCamera(){
   cameraX += mapSpeedMax;
-  // update parallax layers in drawBackground
 }
 
 function updateProgress(){
@@ -280,7 +256,6 @@ function updateProgress(){
    COLLISION
    =========================== */
 function checkCollisionSpike(spike){
-  // pixel-ish box vs triangle approx
   const px = player.x, py = player.y, ps = player.size;
   const sx = spike.x - cameraX, sy = H - 50 - 50, ss = 50;
   if(px + ps > sx + 5 && px < sx + ss - 5 && py + ps > sy + 10) return true;
@@ -311,19 +286,15 @@ function showAttempt(){
 }
 
 function fullResetToStart(){
-  // full reset: reset camera, regenerate spikes, reset player pos, reset music to start
   cancelAnimationFrame(gameLoopId);
   cameraX = 0;
   generateSpikes();
-  // reset player vertical pos
   player.y = H - 50 - player.size;
   player.vy = 0;
   player.onGround = true;
   player.angle = 0;
-  // reset music
   try { bgMusic.currentTime = 0; } catch(e) {}
   try { bgMusic.play(); } catch(e) {}
-  // reset progress bar
   progressEl.style.width = '0%';
   progressEl.textContent = '0%';
   gameStarted = true;
@@ -332,19 +303,15 @@ function fullResetToStart(){
 
 function respawnToLastCheckpoint(){
   if(checkpoints.length === 0){
-    // fallback to full reset
     fullResetToStart();
     return;
   }
   const last = checkpoints[checkpoints.length - 1];
-  // set camera so player.x on screen remains same: cameraX = worldX - player.x
   cameraX = last.worldX - player.x;
-  // set player exact Y to saved Y
   player.y = last.playerWorldY;
   player.vy = 0;
   player.angle = 0;
   player.onGround = last.playerOnGround;
-  // set music time and progress
   try { bgMusic.currentTime = last.time || 0; } catch(e) {}
   updateProgress();
   gameStarted = true;
@@ -372,19 +339,15 @@ function gameLoop(){
 
   // collision detection
   if(checkCollision()){
-    // always increment attempt on death (including practice)
     attempt++;
     showAttempt();
 
     if(practiceMode && checkpoints.length > 0){
-      // in practice: respawn to last checkpoint
-      // small delay to show attempt then respawn so player sees death
       setTimeout(() => {
         respawnToLastCheckpoint();
       }, 250);
       return;
     } else {
-      // normal mode: full restart after a delay
       gameStarted = false;
       setTimeout(() => {
         fullResetToStart();
@@ -411,7 +374,6 @@ player.onGround = true;
 
 // Start button behavior
 startBtn.addEventListener('click', () => {
-  // start music and game
   bgMusic.play().then(() => {
     gameStarted = true;
     startBtn.style.display = 'none';
@@ -419,7 +381,6 @@ startBtn.addEventListener('click', () => {
     showAttempt();
     gameLoop();
   }).catch(() => {
-    // in case autoplay blocked
     gameStarted = true;
     startBtn.style.display = 'none';
     canvas.focus();
@@ -438,14 +399,30 @@ function drawPauseMenu(){
   // draw overlay
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(0,0,W,H);
-  // three circular icons centered horizontally
-  drawCircleIcon(W/2 - 100, H/2, 40, '#fff', 'triangle', '#000'); // resume
-  drawCircleIcon(W/2, H/2, 40, '#fff', 'arrow', '#000');         // restart
-  // practice toggle: color changes when active
+  // compute dynamic icon positions and radius so mobile scales
+  const iconR = Math.max(32, Math.min(64, Math.min(W, H) * 0.06)); // <<< MOD: dynamic sizing
+  const centerY = H/2;
+  const centerX = W/2;
+  // positions
+  const leftX = centerX - iconR*3;
+  const midX = centerX;
+  const rightX = centerX + iconR*3;
+
+  drawCircleIcon(leftX, centerY, iconR, '#fff', 'triangle', '#000');
+  drawCircleIcon(midX, centerY, iconR, '#fff', 'arrow', '#000');
   const bg = practiceMode ? '#0a0' : '#fff';
   const iconColor = practiceMode ? '#000' : '#0f0';
-  drawCircleIcon(W/2 + 100, H/2, 40, bg, 'rhombus', iconColor);
+  drawCircleIcon(rightX, centerY, iconR, bg, 'rhombus', iconColor);
+
+  // save last drawn icon geometry for hit testing (<<< MOD)
+  lastPauseMenuIcons = {
+    left: { x:leftX, y:centerY, r:iconR },
+    mid: { x:midX, y:centerY, r:iconR },
+    right: { x:rightX, y:centerY, r:iconR }
+  };
 }
+
+let lastPauseMenuIcons = null; // <<< MOD: store last positions for hit tests
 
 function drawCircleIcon(x, y, r, bgColor, type, iconColor){
   ctx.fillStyle = bgColor;
@@ -481,9 +458,8 @@ function drawCircleIcon(x, y, r, bgColor, type, iconColor){
 function showPauseMenu(){
   pauseMenuVisible = true;
   paused = true;
-  // pause audio
   try { bgMusic.pause(); } catch(e) {}
-  // draw overlay frame
+  // draw menu once (canvas drawn overlay)
   drawPauseMenu();
 }
 
@@ -491,55 +467,41 @@ function showPauseMenu(){
 function hidePauseMenu(){
   pauseMenuVisible = false;
   paused = false;
-  // if not in practice mode, ensure practice buttons hidden
   if(!practiceMode){
     cpSetBtn.style.display = 'none';
     cpDelBtn.style.display = 'none';
   }
-  // resume music & game loop
   try { bgMusic.play(); } catch(e) {}
   gameLoop();
 }
 
 // handle clicks on canvas for pause menu icons
-canvas.addEventListener('click', function(e){
-  // get canvas-local coords
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  if(pauseMenuVisible){
-    const cx = W/2 - 100, cy = H/2;
-    const rx = W/2, ry = H/2;
-    const px = W/2 + 100, py = H/2;
-    if(Math.hypot(mx - cx, my - cy) < 40){
-      // resume
-      hidePauseMenu();
-      return;
-    }
-    if(Math.hypot(mx - rx, my - ry) < 40){
-      // restart
-      // restart should reset to start (and keep practice mode as is? original requirement: toggling practice resets the game,
-      // but pressing restart inside pause should just restart the current mode — so here: fullResetToStart())
-      fullResetToStart();
-      hidePauseMenu();
-      return;
-    }
-    if(Math.hypot(mx - px, my - py) < 40){
-      // toggle practice mode
-      togglePracticeMode();
-      // togglePracticeMode will auto-close the menu and reset as required
-      return;
-    }
+function handlePauseMenuPointer(mx, my){
+  if(!pauseMenuVisible || !lastPauseMenuIcons) return;
+  // check distances to each icon center
+  const l = lastPauseMenuIcons.left;
+  const m = lastPauseMenuIcons.mid;
+  const p = lastPauseMenuIcons.right;
+  if(Math.hypot(mx - l.x, my - l.y) < l.r){
+    // resume
+    hidePauseMenu();
+    return;
   }
-});
+  if(Math.hypot(mx - m.x, my - m.y) < m.r){
+    // restart
+    fullResetToStart();
+    hidePauseMenu();
+    return;
+  }
+  if(Math.hypot(mx - p.x, my - p.y) < p.r){
+    // toggle practice mode
+    togglePracticeMode();
+    return;
+  }
+}
 
 /* ===========================
    Practice Buttons (DOM elements)
-   - Two square buttons shown only when practiceMode active.
-   - cpSetBtn (left) places checkpoint when clicked.
-   - cpDelBtn (right) deletes last checkpoint when clicked.
-   - Icons are created via SVG to match prior look.
    =========================== */
 function drawRhombusInElement(el, crossed=false){
   const svgNS = "http://www.w3.org/2000/svg";
@@ -571,7 +533,6 @@ drawRhombusInElement(cpDelBtn, true);
 cpSetBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   if(!practiceMode) return;
-  // Place checkpoint at current player world position (store worldX and worldY)
   placeCheckpointFromCurrentPlayer();
 });
 cpDelBtn.addEventListener('click', (e) => {
@@ -582,34 +543,26 @@ cpDelBtn.addEventListener('click', (e) => {
 
 // helper: toggle practice mode with required resets and UI changes
 function togglePracticeMode(){
-  // Toggle
   practiceMode = !practiceMode;
 
-  // When toggled either way, requirement: reset attempt and reset game to start (0%)
   attempt = 1;
   showAttempt();
 
-  // Clear or keep checkpoints? User required: when exit practice -> play from start and remove cp icons.
   if(practiceMode){
-    // entering practice -> clear existing checkpoints (start fresh) then show cp buttons
     checkpoints = [];
     cpSetBtn.style.display = 'flex';
     cpDelBtn.style.display = 'flex';
   } else {
-    // exiting practice -> clear checkpoints and hide buttons
     checkpoints = [];
     cpSetBtn.style.display = 'none';
     cpDelBtn.style.display = 'none';
   }
 
-  // Auto-close pause menu immediately and start from beginning (as requested)
   pauseMenuVisible = false;
   paused = false;
 
-  // Reset to start
   fullResetToStart();
 
-  // If music paused, ensure play
   try { bgMusic.play(); } catch(e) {}
 }
 
@@ -618,23 +571,57 @@ cpSetBtn.style.display = 'none';
 cpDelBtn.style.display = 'none';
 
 /* ===========================
-   CANVAS CLICK / POINTER fallbacks
+   ORIENTATION / MOBILE HANDLING
    ===========================
-   Note: We already used mousedown/up + touchstart/end above for jump/hold.
-   Keep simple: clicks outside menu are treated as gameplay input (already handled).
+   If on mobile and portrait -> require landscape.
+   We pause the game and show rotate overlay until user rotates device.
 */
+function checkOrientationAndMobile(){
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const portrait = window.innerHeight > window.innerWidth;
+  if(isMobile && portrait){
+    // show overlay and pause
+    rotateOverlay.style.display = 'flex';
+    paused = true;
+    pauseMenuVisible = false;
+    try { bgMusic.pause(); } catch(e){}
+    return true;
+  } else {
+    rotateOverlay.style.display = 'none';
+    // only resume if game was previously started
+    if(gameStarted){ paused = false; try { bgMusic.play(); } catch(e){}; gameLoop(); }
+    return false;
+  }
+}
 
-/* ===========================
-   RESIZE HANDLING
-   =========================== */
+// call on load and resize/orientationchange
 window.addEventListener('resize', () => {
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
-  // reposition player to ground if needed
-  // Ensure saved checkpoints' Y remain consistent relative to resized canvas:
-  // For simplicity, when resizing we keep player.y as same value; this may slightly shift checkpoint visual but acceptable.
-  // If you want to scale, we need extra logic — not requested.
+  // adjust player ground pos safely
+  player.y = Math.min(player.y, H - 50 - player.size);
+  // recompute menu icon geometry next draw
+  if(pauseMenuVisible) drawPauseMenu();
+  // orientation check
+  checkOrientationAndMobile();
 });
+
+// also handle orientation change explicitly
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    if(pauseMenuVisible) drawPauseMenu();
+    checkOrientationAndMobile();
+  }, 200);
+});
+
+// initial orientation check
+checkOrientationAndMobile();
+
+/* ===========================
+   CANVAS CLICK / POINTER fallbacks
+   =========================== */
 
 /* ===========================
    INITIALIZATION: draw initial pause menu for UI
@@ -642,3 +629,4 @@ window.addEventListener('resize', () => {
 ctx.fillStyle = '#000';
 ctx.fillRect(0, 0, W, H);
 drawPauseMenu();
+
