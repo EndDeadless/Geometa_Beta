@@ -60,6 +60,29 @@ const bgLayers = [
 ];
 
 /* ===========================
+   HIGH SCORE / RECORDS
+=========================== */
+let normalHighScore = parseFloat(localStorage.getItem('normalHighScore')) || 0;
+let practiceHighScore = parseFloat(localStorage.getItem('practiceHighScore')) || 0;
+
+// ✅ trạng thái game kết thúc
+let gameEnded = false;
+
+function updateHighScore(percent){
+  if(practiceMode){
+    if(percent > practiceHighScore){
+      practiceHighScore = percent;
+      localStorage.setItem('practiceHighScore', practiceHighScore);
+    }
+  } else {
+    if(percent > normalHighScore){
+      normalHighScore = percent;
+      localStorage.setItem('normalHighScore', normalHighScore);
+    }
+  }
+}
+
+/* ===========================
    PRACTICE & CHECKPOINTS
    =========================== */
 let practiceMode = false;
@@ -134,6 +157,58 @@ window.addEventListener('keyup', (e) => {
   if(e.code === 'Space'){
     e.preventDefault();
     holding = false;
+  }
+});
+
+// --- pointerup / pointercancel / keyboard events ---
+canvas.addEventListener('pointerup', (e) => {
+  holding = false;
+  e.preventDefault();
+}, {passive:false});
+
+canvas.addEventListener('pointercancel', () => {
+  holding = false;
+});
+
+window.addEventListener('keydown', (e) => {
+  if(e.code === 'Space'){
+    e.preventDefault();
+    holding = true;
+    jump();
+  } else if(e.key === 'c' || e.key === 'C'){
+    if(practiceMode) placeCheckpointFromCurrentPlayer();
+  } else if(e.key === 'x' || e.key === 'X'){
+    if(practiceMode) deleteLastCheckpoint();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if(e.code === 'Space'){
+    e.preventDefault();
+    holding = false;
+  }
+});
+
+// --- thêm pointerdown cho nút Chơi lại ---
+canvas.addEventListener('pointerdown', (e)=>{
+  if(!gameEnded) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const bx = W/2 - 80, by = H/2 + 40, bw = 160, bh = 50;
+  if(mx >= bx && mx <= bx+bw && my >= by && my <= by+bh){
+    // chỉ reset nhạc và nhân vật về đầu game, không reset kỉ lục
+    gameEnded = false;
+    paused = false;
+    gameStarted = true;
+    cameraX = 0;
+    player.y = H - 50 - player.size;
+    player.vy = 0;
+    player.angle = 0;
+    player.onGround = true;
+    try { bgMusic.currentTime = 0; bgMusic.play(); } catch(e){}
+    updateProgress();
+    gameLoop();
   }
 });
 
@@ -238,6 +313,15 @@ function drawCheckpoints(){
   });
 }
 
+function drawHighScore(){
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px Arial';
+  ctx.textAlign = 'left';
+  const text = practiceMode ? `Practice High: ${Math.floor(practiceHighScore)}%` 
+                            : `High Score: ${Math.floor(normalHighScore)}%`;
+  ctx.fillText(text, 20, 30);
+}
+
 /* ===========================
    CAMERA & PROGRESS
    =========================== */
@@ -250,6 +334,9 @@ function updateProgress(){
   let percent = Math.min((bgMusic.currentTime / bgMusic.duration) * 100, 100);
   progressEl.style.width = percent + "%";
   progressEl.textContent = Math.floor(percent) + "%";
+
+  // ✅ Thêm dòng này để cập nhật kỉ lục liên tục
+  updateHighScore(percent); 
 }
 
 /* ===========================
@@ -332,6 +419,9 @@ function gameLoop(){
   drawCheckpoints();
   drawPlayer();
 
+   // ✅ vẽ high score
+  drawHighScore();
+   
   // update physics & world
   updatePlayer();
   updateCamera();
@@ -356,6 +446,44 @@ function gameLoop(){
     }
   }
 
+   function checkGameEnd(){
+  if(bgMusic.ended || (bgMusic.currentTime / bgMusic.duration) >= 1){
+    endGame();
+  }
+}
+
+function endGame(){
+  gameEnded = true;
+  paused = true;
+  gameStarted = false;
+  // cập nhật kỉ lục final
+  updateHighScore(100);
+  drawEndScreen();
+}
+
+function drawEndScreen(){
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = '#0f0';
+  ctx.font = '48px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Chúc mừng!', W/2, H/2 - 60);
+
+  ctx.font = '32px Arial';
+  ctx.fillText('Progress: 100%', W/2, H/2);
+
+  // draw restart button
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(W/2 - 80, H/2 + 40, 160, 50);
+  ctx.fillStyle = '#000';
+  ctx.font = '24px Arial';
+  ctx.fillText('Chơi lại', W/2, H/2 + 75);
+}
+
+  // ✅ kiểm tra kết thúc game (nhạc xong hoặc 100%)
+  checkGameEnd();
+   
   // request next frame
   gameLoopId = requestAnimationFrame(gameLoop);
 }
