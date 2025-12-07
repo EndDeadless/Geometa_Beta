@@ -1,86 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Geometry Dash Clone</title>
-
 <style>
-html,body{
-    margin:0; padding:0;
-    overflow:hidden;
-    background:#000;
-}
-canvas{display:block}
+    html, body {margin:0; padding:0; overflow:hidden; background:#000; height:100%;}
+    canvas{display:block;}
+    #startBtn, #pauseBtn{
+        position: absolute;
+        padding:10px 20px;
+        font-size: 18px;
+        cursor:pointer;
+        z-index:10;
+    }
+    #startBtn{top:50%; left:50%; transform:translate(-50%,-50%);}
+    #pauseBtn{top:10px; left:10px;}
+    /* progress moved lên trên và dài hơn một tí */
+    #progressBar{
+        position:absolute;
+        top:10px; left:50%;
+        transform:translateX(-50%);
+        width:330px; height:20px; /* tăng từ 300 -> 330 */
+        background:#888; border-radius:10px;
+        overflow:hidden; z-index:10;
+    }
+    #progress{
+        height:100%; width:0%; background:#fff;
+        text-align:center; color:#000; font-weight:bold; line-height:20px;
+    }
+    #attempt{
+        position:absolute; top:40px; right:10px;
+        color:#fff; font-size:20px;
+        opacity:0; transition:opacity 0.3s;
+        z-index:10;
+    }
 
-/* Buttons */
-#startBtn,#pauseBtn{
-    position:absolute;
-    padding:10px 20px;
-    font-size:18px;
-    cursor:pointer;
-    z-index:10;
-}
-#startBtn{
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
-}
-#pauseBtn{
-    top:10px; left:10px;
-}
+    /* practice mode square buttons */
+    .practiceBtn {
+        position: absolute;
+        bottom:30px;
+        width:64px; height:64px;
+        border-radius:6px;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; z-index:11;
+        background:#111; box-shadow:0 2px 8px rgba(0,0,0,0.6);
+        border:2px solid rgba(255,255,255,0.06);
+    }
+    #cpSet { left: calc(50% - 80px); } /* trái */
+    #cpDel { left: calc(50% + 16px); }  /* phải */
 
-/* Progress bar */
-#progressBar{
-    position:absolute;
-    top:10px;
-    left:50%;
-    transform:translateX(-50%);
-    width:420px;
-    height:20px;
-    background:#888;
-    border-radius:10px;
-    overflow:hidden;
-    z-index:10;
-}
-#progress{
-    height:100%;
-    width:0%;
-    background:#fff;
-    text-align:center;
-    line-height:20px;
-    font-weight:bold;
-    color:#000;
-}
-
-/* Attempt */
-#attempt{
-    position:absolute;
-    top:40px;
-    right:10px;
-    font-size:20px;
-    color:white;
-    opacity:0;
-    transition:opacity .3s;
-    z-index:10;
-}
+    /* small helper so canvas can receive focus */
+    #gameCanvas { outline: none; }
 </style>
 </head>
-
 <body>
-
 <button id="startBtn">Start Game</button>
 <button id="pauseBtn">||</button>
-
-<div id="progressBar">
-    <div id="progress">0%</div>
-</div>
-
+<div id="progressBar"><div id="progress">0%</div></div>
 <div id="attempt"></div>
+<canvas id="gameCanvas" tabindex="0"></canvas>
 
-<canvas id="gameCanvas"></canvas>
+<!-- practice buttons (ẩn lúc đầu) -->
+<div id="cpSet" class="practiceBtn" style="display:none;" title="Đặt checkpoint"></div>
+<div id="cpDel" class="practiceBtn" style="display:none;" title="Xóa checkpoint gần nhất"></div>
 
 <audio id="bgMusic" src="Di sản của những người đã ngã xuống - đệm.mp3"></audio>
-
 <script src="game.js"></script>
 </body>
 </html>
