@@ -1,4 +1,4 @@
-// game.js (cập nhật - hỗ trợ Practice Mode + Checkpoints + fix nhảy + menu click coords)
+// game.js (cập nhật - Practice Mode + Checkpoints + key C/X + fixes)
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -49,12 +49,12 @@ const bgLayers = [
 let practiceMode = false;           // đang ở practice (kỹ thuật)
 let practiceActiveButtons = false;  // 2 nút vuông hiển thị
 let checkpoints = []; // mảng các checkpoint: { worldX, time }
+
+// place/delete checkpoint functions
 function placeCheckpoint(){
-    // store worldX = cameraX + player.x so that map placement aligns with player screen pos
     const worldX = cameraX + player.x;
     const time = bgMusic.currentTime || 0;
     checkpoints.push({worldX, time});
-    // show icon (drawn in render loop)
 }
 function deleteCheckpoint(){
     if(checkpoints.length>0) checkpoints.pop();
@@ -68,8 +68,15 @@ canvas.addEventListener('mousedown',(e)=>{ e.preventDefault(); holding=true; jum
 canvas.addEventListener('mouseup',(e)=>{ e.preventDefault(); holding=false; });
 canvas.addEventListener('mouseout',()=>{ holding=false; });
 
+// keyboard control: Space to jump; C to set checkpoint (only in practice); X to delete (only in practice)
 window.addEventListener('keydown',e=>{
     if(e.code==='Space'){ e.preventDefault(); jump(); }
+    if(e.code==='KeyC'){
+        if(practiceMode){ placeCheckpoint(); }
+    }
+    if(e.code==='KeyX'){
+        if(practiceMode){ deleteCheckpoint(); }
+    }
 });
 
 function jump(){ if(player.onGround){ player.vy = player.jump; player.onGround=false; } }
@@ -123,13 +130,11 @@ function drawObstacles(){
     });
 }
 function drawCheckpoints(){
-    // draw rhombus (hình thoi) green at world position
     checkpoints.forEach(cp=>{
         let screenX = cp.worldX - cameraX;
         if(screenX < -50 || screenX > W + 50) return;
-        // draw rhombus
-        const cx = screenX + 0; // center x
-        const cy = H - 50 - 80; // slightly above ground
+        const cx = screenX;
+        const cy = H - 50 - 80;
         const r = 12;
         ctx.fillStyle = '#0f0';
         ctx.beginPath();
@@ -179,8 +184,8 @@ function showAttempt(){
     },30);
 }
 
-// Reset (full reset to start)
-function resetGame(){
+// Reset (full reset to start) - used when switching modes or normal death
+function resetGame(fullClearCheckpoints=true){
     cancelAnimationFrame(gameLoopId);
     player.y = H-100; player.vy=0; player.onGround=true; player.angle=0; cameraX=0;
     generateSpikes();
@@ -188,23 +193,24 @@ function resetGame(){
     try{ bgMusic.play(); }catch(e){}
     progressEl.style.width = '0%'; progressEl.textContent='0%';
     gameStarted = true;
+    if(fullClearCheckpoints) checkpoints = [];
     gameLoop();
 }
 
 // Respawn to last checkpoint (practice)
 function respawnToLastCheckpoint(){
     const last = checkpoints[checkpoints.length-1];
-    if(!last) return resetGame();
-    // set camera so that player's screen x is same: cameraX = worldX - player.x
+    if(!last){
+        // no checkpoint: full reset but keep practice mode on
+        resetGame(false);
+        return;
+    }
     cameraX = last.worldX - player.x;
-    // set player on ground and reset velocity
     player.y = H-50-player.size; player.vy = 0; player.onGround = true; player.angle = 0;
-    // set music time
-    bgMusic.currentTime = last.time || 0;
-    // ensure progress updated
+    // set music time to checkpoint time
+    try{ bgMusic.currentTime = last.time || 0; }catch(e){}
     updateProgress();
     gameStarted = true;
-    // continue game loop
     gameLoop();
 }
 
@@ -224,14 +230,19 @@ function gameLoop(){
     if(checkCollision()){
         // collision happened
         if(practiceMode && checkpoints.length>0){
-            // do NOT full restart: go to last checkpoint
+            // in practice with checkpoints: increment attempt, respawn to last checkpoint
             attempt++;
             showAttempt();
-            // small delay to show attempt then respawn
             setTimeout(()=>{ respawnToLastCheckpoint(); }, 300);
             return;
+        } else if(practiceMode && checkpoints.length===0){
+            // in practice but no checkpoints -> full reset (but remain in practice)
+            attempt++;
+            showAttempt();
+            setTimeout(()=>{ resetGame(false); }, 300);
+            return;
         } else {
-            // normal behavior: full reset
+            // normal behavior: full reset to start
             gameStarted = false;
             attempt++;
             showAttempt();
@@ -274,13 +285,11 @@ function hidePauseMenu(){
     bgMusic.play();
     // hide practice buttons only if practice mode not active
     if(!practiceMode){ cpSetBtn.style.display='none'; cpDelBtn.style.display='none'; practiceActiveButtons=false; }
-    // continue game loop
     gameLoop();
 }
 pauseBtn.addEventListener('click',()=>{ if(pauseMenuVisible) hidePauseMenu(); else showPauseMenu(); });
 
 function drawPauseMenu(){
-    // draw immediately onto canvas (one-frame overlay)
     ctx.fillStyle='rgba(0,0,0,0.7)';
     ctx.fillRect(0,0,W,H);
     // Resume (triangle)
@@ -304,7 +313,7 @@ function drawCircleIcon(x,y,r,bgColor,type,iconColor){
     ctx.fill();
 }
 
-// canvas click coordinates helper (use bounding rect)
+// canvas click coordinates helper
 function getCanvasPos(e){
     const rect = canvas.getBoundingClientRect();
     return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
@@ -330,7 +339,7 @@ canvas.addEventListener('click',function(e){
         if(Math.hypot(mx - px, my - py) < 40){ // Practice toggle
             // toggle practice mode
             practiceMode = !practiceMode;
-            // when enabling practice mode -> show the two square buttons
+            // when enabling practice mode -> show the two square buttons; when disabling hide them and clear checkpoints
             if(practiceMode){
                 cpSetBtn.style.display = 'flex';
                 cpDelBtn.style.display = 'flex';
@@ -339,26 +348,33 @@ canvas.addEventListener('click',function(e){
                 cpSetBtn.style.display = 'none';
                 cpDelBtn.style.display = 'none';
                 practiceActiveButtons = false;
-                checkpoints = []; // optional: clear checkpoints when exit practice (you wanted when exit play from start)
+                checkpoints = [];
             }
-            // redraw pause menu to update practice icon color
-            drawPauseMenu();
+            // reset attempts and reset game to start 0% when toggling mode (both ON and OFF)
+            attempt = 1;
+            showAttempt();
+            resetGame(true);
+            // After toggling, menu must auto-close and resume play
+            pauseMenuVisible = false;
+            paused = false;
+            bgMusic.play();
+            drawPauseMenu(); // optional update frame (not strictly needed)
+            // ensure we actually continue main loop
+            gameLoop();
             return;
         }
     } else {
-        // If not in pause menu, clicks on canvas should be treated as gameplay input; already handled by mousedown/up
+        // not in pause menu: gameplay click already covered by mousedown/up for jump
     }
 });
 
 // Practice buttons (square) - using DOM elements for simpler hitboxes and crisp icons
 function drawRhombusInElement(el, crossed=false){
-    // create inner SVG for icon
     const svgNS = "http://www.w3.org/2000/svg";
-    el.innerHTML = ''; // clear
+    el.innerHTML = '';
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('width','40'); svg.setAttribute('height','40'); svg.setAttribute('viewBox','0 0 40 40');
     const g = document.createElementNS(svgNS, 'g');
-    // rhombus path
     const path = document.createElementNS(svgNS, 'path');
     path.setAttribute('d','M20 5 L33 20 L20 35 L7 20 Z');
     path.setAttribute('fill', '#0f0');
@@ -375,35 +391,4 @@ function drawRhombusInElement(el, crossed=false){
 drawRhombusInElement(cpSetBtn, false);
 drawRhombusInElement(cpDelBtn, true);
 
-// cpSet and cpDel click handlers
-cpSetBtn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    if(!practiceMode) return;
-    placeCheckpoint();
-});
-cpDelBtn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    if(!practiceMode) return;
-    deleteCheckpoint();
-});
-
-// make sure canvas gets focus so space works
-canvas.addEventListener('click',()=>{ canvas.focus(); });
-
-// Resize handling
-window.addEventListener('resize',()=>{
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-    // reposition practice buttons (CSS uses calc so it's responsive)
-});
-
-// Fix initial focus
-canvas.setAttribute('tabindex','0');
-canvas.focus();
-
-// Start bgMusic on user gesture if available
-// (Handled on Start button click)
-
-// Initial draw (menu)
-ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-drawPauseMenu();
+// cp
